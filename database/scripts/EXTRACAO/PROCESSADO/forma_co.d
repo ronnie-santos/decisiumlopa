@@ -1,0 +1,17 @@
+1 "TELEFONE FIXO"
+2 "CELULAR"
+3 "E-MAIL"
+4 "FAX"
+5 "SENHA/OUTRO"
+.
+PSC
+filename=FORMA_CONTATO
+records=0000000000005
+ldbname=DECISIUM
+timestamp=2026/04/09-11:37:19
+numformat=44,46
+dateformat=dmy-1950
+map=NO-MAP
+cpstream=ISO8859-1
+.
+0000000073
