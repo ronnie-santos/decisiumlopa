@@ -117,7 +117,7 @@ export function RelatorioNotasFiscaisPage() {
 
       <div className="p-5 space-y-4">
 
-        {/* Summary cards */}
+        {/* Summary cards  **/}
         {data && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl border-l-4 border-[#B21212] p-4 shadow-sm flex items-center justify-between">
