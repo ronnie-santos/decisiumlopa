@@ -55,6 +55,15 @@ const situacaoColors: Record<string, string> = {
 const fmt = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
+const formatPhone = (v: string) => {
+  const d = (v || '').replace(/\D/g, '').slice(0, 11);
+  if (d.length === 0) return '';
+  if (d.length <= 2)  return `(${d}`;
+  if (d.length <= 6)  return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+};
+
 // ── Componente principal ────────────────────────────────────────────────────
 export function OrcamentoPage() {
   const [isModalOpen, setIsModalOpen]   = useState(false);
@@ -66,6 +75,11 @@ export function OrcamentoPage() {
   const [isLoading, setIsLoading]       = useState(true);
   const [error, setError]               = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 6000);
+    return () => clearTimeout(t);
+  }, [error]);
 
   // Dados da lista
   const [orcamentos, setOrcamentos]     = useState<any[]>([]);
@@ -80,6 +94,9 @@ export function OrcamentoPage() {
   // Filtro estado→cidade (carregamento dinâmico)
   const [estadoFiltro, setEstadoFiltro] = useState('');
   const { cidades: cidadesFiltradas } = useCidadeBairro(estadoFiltro || null);
+
+  const [isCepLoading, setIsCepLoading] = useState(false);
+  const [pendingCidade, setPendingCidade] = useState<string | null>(null);
 
   // Formulário
   const [formData, setFormData] = useState(emptyForm());
@@ -117,7 +134,7 @@ export function OrcamentoPage() {
   const fetchAux = async () => {
     const [rEmp, rFun, rSrv, rEst, rCtr] = await Promise.all([
       fetch('/api/empresas'),
-      fetch('/api/funcionarios'),
+      fetch('/api/funcionarios?situacao=ATIVO'),
       fetch('/api/servico'),
       fetch('/api/estados'),
       fetch('/api/contratos?ativo=true'),
@@ -131,6 +148,13 @@ export function OrcamentoPage() {
 
   useEffect(() => { fetchAux(); }, []);
   useEffect(() => { fetchOrcamentos(page); }, [page]);
+
+  useEffect(() => {
+    if (!pendingCidade || cidadesFiltradas.length === 0) return;
+    const match = cidadesFiltradas.find(c => c.nome.toLowerCase() === pendingCidade.toLowerCase());
+    setFormData(p => ({ ...p, cidade: match ? match.nome : pendingCidade }));
+    setPendingCidade(null);
+  }, [cidadesFiltradas, pendingCidade]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const calcTotal = () => services.reduce((acc, s) => acc + (s.valor_total || 0), 0);
@@ -146,6 +170,24 @@ export function OrcamentoPage() {
       nome:      c.nome      || '',
       cnpj_cpf:  c.cnpj_cpf  || '',
     }));
+  };
+
+  const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '');
+    setFormData(p => ({ ...p, cep: digits }));
+    if (digits.length !== 8) return;
+    setIsCepLoading(true);
+    try {
+      const r = await fetch(`/api/cep/${digits}`);
+      if (r.ok) {
+        const data = await r.json();
+        setFormData(p => ({ ...p, endereco: data.logradouro || p.endereco }));
+        if (data.uf) setEstadoFiltro(data.uf);
+        if (data.localidade) setPendingCidade(data.localidade);
+      }
+    } catch { /* ignore */ } finally {
+      setIsCepLoading(false);
+    }
   };
 
   // ── Modais ────────────────────────────────────────────────────────────────
@@ -203,7 +245,13 @@ export function OrcamentoPage() {
 
   // ── Salvar ────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!formData.idempresa) { setError('Selecione a empresa.'); return; }
+    if (!formData.idempresa)      { setError('Selecione a empresa.'); return; }
+    if (!formData.nome?.trim())   { setError('Nome do cliente deve ser preenchido.'); return; }
+    if (!formData.idfuncionario)  { setError('Selecione o responsável pelo atendimento.'); return; }
+    if (services.filter(s => s.idequipamento > 0 && s.nome_servico).length === 0) {
+      setError('Adicione ao menos um serviço ao orçamento.');
+      return;
+    }
 
     setIsSaving(true);
     setError(null);
@@ -384,11 +432,20 @@ export function OrcamentoPage() {
         </div>
       )}
 
-      {/* Toast */}
+      {/* Toast sucesso */}
       {successMessage && (
         <div className="fixed top-4 right-4 z-[120] p-4 rounded-lg shadow-2xl flex items-center gap-3 bg-emerald-50 border border-emerald-100">
           <p className="text-sm font-bold text-emerald-800">{successMessage}</p>
           <button onClick={() => setSuccessMessage(null)}><X className="h-4 w-4 text-slate-400" /></button>
+        </div>
+      )}
+
+      {/* Toast erro */}
+      {error && (
+        <div className="fixed top-4 right-4 z-[120] max-w-sm p-4 rounded-lg shadow-2xl flex items-start gap-3 bg-red-50 border border-red-200">
+          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm font-semibold text-red-700 flex-1">{error}</p>
+          <button onClick={() => setError(null)}><X className="h-4 w-4 text-red-400 hover:text-red-600" /></button>
         </div>
       )}
 
@@ -627,7 +684,7 @@ export function OrcamentoPage() {
                 <Input label="Nome / Razão Social" placeholder="Nome completo ou razão social" value={formData.nome} onChange={e => setFormData(p => ({ ...p, nome: e.target.value }))} disabled={isViewOnly} />
               </div>
               <Input label="CNPJ / CPF" placeholder="00.000.000/0000-00" value={formData.cnpj_cpf} onChange={e => setFormData(p => ({ ...p, cnpj_cpf: e.target.value }))} disabled={isViewOnly} />
-              <Input label="Telefone" placeholder="(00) 00000-0000" value={formData.fone} onChange={e => setFormData(p => ({ ...p, fone: e.target.value }))} disabled={isViewOnly} />
+              <Input label="Telefone" placeholder="(00) 00000-0000" value={formatPhone(formData.fone)} onChange={e => setFormData(p => ({ ...p, fone: e.target.value.replace(/\D/g, '') }))} disabled={isViewOnly} />
               <Input label="E-mail" type="email" placeholder="cliente@email.com" value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} disabled={isViewOnly} />
               <Input label="Contato" placeholder="Nome da pessoa de contato" value={formData.contato} onChange={e => setFormData(p => ({ ...p, contato: e.target.value }))} disabled={isViewOnly} />
             </div>
@@ -639,7 +696,19 @@ export function OrcamentoPage() {
               <span className="w-1.5 h-1.5 rounded-full bg-[#B21212]" />Endereço de Faturamento
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <Input label="CEP" value={formData.cep} onChange={e => setFormData(p => ({ ...p, cep: e.target.value.replace(/\D/g, '') }))} disabled={isViewOnly} />
+              <div className="flex flex-col">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">
+                  CEP {isCepLoading && <span className="text-[#B21212] font-normal normal-case tracking-normal">buscando...</span>}
+                </label>
+                <input
+                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[#B21212]/20 disabled:bg-slate-50 disabled:text-slate-500"
+                  placeholder="00000-000"
+                  maxLength={9}
+                  value={formData.cep.length > 5 ? `${formData.cep.slice(0, 5)}-${formData.cep.slice(5)}` : formData.cep}
+                  onChange={handleCepChange}
+                  disabled={isViewOnly || isCepLoading}
+                />
+              </div>
               <div className="md:col-span-3">
                 <Input label="Logradouro" placeholder="Rua, Av., etc." value={formData.endereco} onChange={e => setFormData(p => ({ ...p, endereco: e.target.value }))} disabled={isViewOnly} />
               </div>
@@ -745,6 +814,7 @@ export function OrcamentoPage() {
                           }}
                           disabled={isViewOnly}
                           placeholder="Buscar equipamento..."
+                          statusFilter="DISPONÍVEL"
                         />
                       </td>
                       {/* Serviço oferecido */}
@@ -878,11 +948,6 @@ export function OrcamentoPage() {
                 </select>
               </div>
             </div>
-            {error && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-lg">
-                <p className="text-xs text-red-600 font-medium">{error}</p>
-              </div>
-            )}
           </section>
 
         </div>

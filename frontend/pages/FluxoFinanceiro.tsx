@@ -18,22 +18,24 @@ export function FluxoFinanceiroPage() {
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [invalidFields, setInvalidFields] = useState<string[]>([]);
   
-  const [formData, setFormData] = useState<{ 
-    idfluxo: string; 
-    descricao: string; 
-    fluxo_pai: string; 
-    tipo: string; 
-    movimento: string; 
-    codigo_importacaoStr: string; 
+  const [formData, setFormData] = useState<{
+    idfluxo: string;
+    descricao: string;
+    fluxo_pai: string;
+    tipo: string;
+    movimento: string;
+    codigo_importacaoStr: string;
     nivelStr: string;
-  }>({ 
-    idfluxo: '', 
+    status: string;
+  }>({
+    idfluxo: '',
     descricao: '',
     fluxo_pai: '',
     tipo: '',
     movimento: '',
     codigo_importacaoStr: '',
-    nivelStr: ''
+    nivelStr: '',
+    status: 'ATIVO',
   });
 
   const filteredItems = items
@@ -46,12 +48,12 @@ export function FluxoFinanceiroPage() {
     .sort((a, b) => String(a.idfluxo).localeCompare(String(b.idfluxo)));
 
   const fluxoCols: GridColumn<FluxoFinanceiro>[] = [
-    { header: 'Código', render: i => <span className="text-sm font-bold text-[#B21212]">{i.idfluxo}</span> },
+    { header: 'Código', render: i => <span className="text-xs font-bold text-[#B21212]">{i.idfluxo}</span> },
     {
       header: 'Descrição',
       render: i => (
         <>
-          <span className="text-sm font-medium text-slate-700">{i.descricao}</span>
+          <span className="text-xs font-bold text-slate-700">{i.descricao}</span>
           {i.fluxo_pai && <div className="text-xs text-slate-400 mt-0.5">Pai: {i.fluxo_pai}</div>}
         </>
       ),
@@ -60,11 +62,11 @@ export function FluxoFinanceiroPage() {
       header: 'Tipo',
       render: i => (
         <>
-          <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
+          <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-600">
             {i.tipo === 'A' ? 'Analítico' : i.tipo === 'S' ? 'Sintético' : typeof i.tipo === 'string' ? i.tipo : '-'}
           </span>
           {i.movimento && (
-            <span className={`ml-2 text-xs font-medium px-2 py-1 rounded-md ${i.movimento === 'R' ? 'text-green-600 bg-green-50' : i.movimento === 'D' ? 'text-red-600 bg-red-50' : 'text-slate-600 bg-slate-50'}`}>
+            <span className={`ml-2 inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase ${i.movimento === 'R' ? 'text-green-600 bg-green-50' : i.movimento === 'D' ? 'text-red-600 bg-red-50' : 'text-slate-600 bg-slate-50'}`}>
               {i.movimento === 'R' ? 'Receita' : i.movimento === 'D' ? 'Despesa' : i.movimento}
             </span>
           )}
@@ -74,7 +76,23 @@ export function FluxoFinanceiroPage() {
     {
       header: 'Nível', headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center',
       cellClass: 'px-4 py-2 text-center',
-      render: i => <span className="text-sm text-slate-500">{i.nivel || '-'}</span>,
+      render: i => <span className="text-xs text-slate-500">{i.nivel || '-'}</span>,
+    },
+    {
+      header: 'Status', headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center',
+      cellClass: 'px-4 py-2 text-center',
+      render: i => {
+        const s = (i.status || 'ATIVO').toUpperCase();
+        return (
+          <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${
+            s === 'INATIVO'
+              ? 'bg-slate-100 text-slate-600 border-slate-200'
+              : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+          }`}>
+            {s}
+          </span>
+        );
+      },
     },
     {
       header: 'Ações', headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',
@@ -95,35 +113,41 @@ export function FluxoFinanceiroPage() {
       const response = await fetch('/api/fluxo-financeiro');
       if (response.ok) {
         const data = await response.json();
-        setItems(data.map((d: any) => ({ ...d, id: String(d.idfluxo) })));
+        setItems(data.map((d: any) => ({
+          ...d,
+          id: String(d.idfluxo),
+          status: d.status ? String(d.status).trim().toUpperCase() : 'ATIVO',
+        })));
       } else { console.error('Falha ao carregar fluxos financeiros'); }
     } catch (error) { console.error('Erro na requisição:', error); }
   };
 
-  const handleOpenNewModal = () => { 
-    setEditingItem(null); 
-    setFormData({ 
-      idfluxo: '', 
+  const handleOpenNewModal = () => {
+    setEditingItem(null);
+    setFormData({
+      idfluxo: '',
       descricao: '',
       fluxo_pai: '',
       tipo: '',
       movimento: '',
       codigo_importacaoStr: '',
-      nivelStr: ''
-    }); 
-    setIsModalOpen(true); 
+      nivelStr: '',
+      status: 'ATIVO',
+    });
+    setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (item: FluxoFinanceiro) => {
     setEditingItem(item);
-    setFormData({ 
-      idfluxo: item.idfluxo || '', 
+    setFormData({
+      idfluxo: item.idfluxo || '',
       descricao: item.descricao || '',
       fluxo_pai: item.fluxo_pai || '',
       tipo: item.tipo || '',
       movimento: item.movimento || '',
       codigo_importacaoStr: item.codigo_importacao ? String(item.codigo_importacao) : '',
-      nivelStr: item.nivel ? String(item.nivel) : ''
+      nivelStr: item.nivel ? String(item.nivel) : '',
+      status: (item.status || 'ATIVO').toUpperCase(),
     });
     setIsModalOpen(true);
   };
@@ -146,7 +170,8 @@ export function FluxoFinanceiroPage() {
         tipo: formData.tipo || null,
         movimento: formData.movimento || null,
         codigo_importacao: formData.codigo_importacaoStr ? parseInt(formData.codigo_importacaoStr) : null,
-        nivel: formData.nivelStr ? parseInt(formData.nivelStr) : null
+        nivel: formData.nivelStr ? parseInt(formData.nivelStr) : null,
+        status: formData.status || 'ATIVO',
       };
 
       const response = await fetch(url, {
@@ -154,9 +179,9 @@ export function FluxoFinanceiroPage() {
         body: JSON.stringify(payload)
       });
       
-      if (response.ok) { 
-        fetchItems(); 
-        setIsModalOpen(false); 
+      if (response.ok) {
+        await fetchItems();
+        setIsModalOpen(false);
       }
       else { 
         const e = await response.json().catch(() => ({})); 
@@ -241,6 +266,18 @@ export function FluxoFinanceiroPage() {
 
           <div className="col-span-1">
              <Input label="Cód. Importação" type="number" placeholder="Ex: 10001" value={formData.codigo_importacaoStr} onChange={(e) => setFormData({ ...formData, codigo_importacaoStr: e.target.value })} />
+          </div>
+
+          <div className="col-span-1 space-y-1.5">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Status</label>
+            <select
+              className="w-full border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-200"
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            >
+              <option value="ATIVO">Ativo</option>
+              <option value="INATIVO">Inativo</option>
+            </select>
           </div>
         </div>
       </Modal>

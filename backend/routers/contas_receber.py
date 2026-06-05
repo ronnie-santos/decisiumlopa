@@ -796,11 +796,30 @@ def registrar_pagamento(
     payload: schemas.RegistrarPagamentoPayload,
     db: Session = Depends(get_db),
 ):
-    """Registra o pagamento de uma conta a receber."""
+    """Registra o pagamento de uma conta a receber e persiste em pagamentos_cr."""
     db_item = _load_conta(db, idcontasreceber)
-    db_item.valor_pago = payload.valor_pago
+    db_item.valor_pago       = payload.valor_pago
     db_item.ultimo_pagamento = payload.data_pagamento
-    db_item.situacao = True
+    db_item.situacao         = True
+
+    # Upsert em pagamentos_cr
+    if payload.idformapgto:
+        pgto = db.query(models.PagamentosCR).filter(
+            models.PagamentosCR.idcontasreceber == idcontasreceber
+        ).first()
+        if pgto:
+            pgto.idformapgto = payload.idformapgto
+            pgto.valor       = payload.valor_pago
+            pgto.data        = payload.data_pagamento
+        else:
+            pgto = models.PagamentosCR(
+                idcontasreceber = idcontasreceber,
+                idformapgto     = payload.idformapgto,
+                valor           = payload.valor_pago,
+                data            = payload.data_pagamento,
+            )
+            db.add(pgto)
+
     db.commit()
     db.refresh(db_item)
     return db_item
@@ -809,11 +828,18 @@ def registrar_pagamento(
 # ── Cancelar baixa ────────────────────────────────────────────────────────────
 @router.patch("/{idcontasreceber}/cancelar-baixa", response_model=schemas.ContasReceber)
 def cancelar_baixa(idcontasreceber: int, db: Session = Depends(get_db)):
-    """Cancela a baixa de uma conta: zera valor_pago, limpa data e reabre a parcela."""
+    """Cancela a baixa: zera valor_pago, limpa data, reabre parcela e remove pagamentos_cr."""
     db_item = _load_conta(db, idcontasreceber)
-    db_item.valor_pago = 0
+    db_item.valor_pago       = 0
     db_item.ultimo_pagamento = None
-    db_item.situacao = False
+    db_item.situacao         = False
+
+    pgto = db.query(models.PagamentosCR).filter(
+        models.PagamentosCR.idcontasreceber == idcontasreceber
+    ).first()
+    if pgto:
+        db.delete(pgto)
+
     db.commit()
     db.refresh(db_item)
     return db_item

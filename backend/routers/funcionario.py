@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from typing import List
+from typing import List, Optional
 
 import models, schemas
 from database import get_db
@@ -12,8 +12,14 @@ router = APIRouter(
 )
 
 @router.get("", response_model=List[schemas.Funcionario])
-def get_funcionarios(db: Session = Depends(get_db)):
-    funcionarios = db.query(models.Funcionario).order_by(models.Funcionario.nome.asc()).all()
+def get_funcionarios(
+    situacao: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    q = db.query(models.Funcionario)
+    if situacao:
+        q = q.filter(models.Funcionario.status == situacao.upper())
+    funcionarios = q.order_by(models.Funcionario.nome.asc()).all()
     return [schemas.Funcionario.model_validate(f) for f in funcionarios]
 
 @router.post("", response_model=schemas.Funcionario)

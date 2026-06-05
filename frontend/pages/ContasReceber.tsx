@@ -57,12 +57,16 @@ export function ContasReceberPage() {
   const [filterCliente, setFilterCliente] = useState('');
   const [filterVencDe, setFilterVencDe] = useState('');
   const [filterVencAte, setFilterVencAte] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus, setFilterStatus] = useState('PENDENTE');
+
+  // ── Formas de Pagamento ───────────────────────────────────────────────────
+  const [formasPagamento, setFormasPagamento] = useState<{ idformapgto: number; nome: string }[]>([]);
 
   // ── Settle (Baixar) modal ─────────────────────────────────────────────────
   const [editingItem, setEditingItem] = useState<ContaReceberAPI | null>(null);
   const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
   const [settleData, setSettleData] = useState({ amountPaid: 0, paymentDate: today });
+  const [settleFormaPagamento, setSettleFormaPagamento] = useState<number | null>(null);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const [paySuccess, setPaySuccess] = useState(false);
@@ -105,6 +109,13 @@ export function ContasReceberPage() {
 
   useEffect(() => { loadData(page); }, [page, loadData]);
 
+  useEffect(() => {
+    fetch('/api/formapagamento?situacao=ATIVO')
+      .then(r => r.json())
+      .then(d => setFormasPagamento(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
+
   const handleFilter = () => {
     if (page === 1) loadData(1);
     else setPage(1);
@@ -120,21 +131,34 @@ export function ContasReceberPage() {
 
   // ── Handlers: Settle ─────────────────────────────────────────────────────
   const handleOpenSettleModal = (item: ContaReceberAPI) => {
+    if (item.situacao === true) {
+      setCancelWarning('Esta conta já está paga. Não é possível realizar uma nova baixa.');
+      return;
+    }
     setEditingItem(item);
     setSettleData({ amountPaid: item.valor ?? 0, paymentDate: today });
+    setSettleFormaPagamento(null);
     setPayError(null);
     setIsSettleModalOpen(true);
   };
 
   const handleConfirmSettle = async () => {
     if (!editingItem) return;
+    if (!settleFormaPagamento) {
+      setPayError('Selecione a forma de recebimento para registrar a baixa.');
+      return;
+    }
     setPaying(true);
     setPayError(null);
     try {
       const res = await fetch(`/api/contas-receber/${editingItem.idcontasreceber}/pagar`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ valor_pago: settleData.amountPaid, data_pagamento: settleData.paymentDate }),
+        body: JSON.stringify({
+          valor_pago: settleData.amountPaid,
+          data_pagamento: settleData.paymentDate,
+          idformapgto: settleFormaPagamento,
+        }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -427,23 +451,23 @@ export function ContasReceberPage() {
         onClose={() => setIsSettleModalOpen(false)}
         title="Baixa de Contas a Receber"
         footer={
-          <div className="flex gap-3 w-full">
-            {payError && (
-              <p className="flex-1 text-xs text-red-600 flex items-center">{payError}</p>
-            )}
-            <div className="flex gap-3 ml-auto">
-              <Button variant="outline" onClick={() => setIsSettleModalOpen(false)} disabled={paying}>
-                Cancelar
-              </Button>
-              <Button onClick={handleConfirmSettle} className="bg-emerald-600 hover:bg-emerald-700" disabled={paying}>
-                {paying ? 'Salvando...' : 'Confirmar Pagamento'}
-              </Button>
-            </div>
+          <div className="flex gap-3 ml-auto">
+            <Button variant="outline" onClick={() => setIsSettleModalOpen(false)} disabled={paying}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmSettle} className="bg-emerald-600 hover:bg-emerald-700" disabled={paying}>
+              {paying ? 'Salvando...' : 'Confirmar Recebimento'}
+            </Button>
           </div>
         }
       >
         <div className="space-y-4">
-          <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
+          {payError && (
+            <div className="p-3 bg-red-50 border border-red-100 rounded-lg">
+              <p className="text-xs text-red-600 font-medium">{payError}</p>
+            </div>
+          )}
+          <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Fechamento / Cliente</p>
@@ -461,15 +485,31 @@ export function ContasReceberPage() {
             </div>
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Forma de Recebimento <span className="text-red-500">*</span>
+            </label>
+            <select
+              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[#B21212]/20"
+              value={settleFormaPagamento ?? ''}
+              onChange={e => setSettleFormaPagamento(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">Selecione a forma de recebimento...</option>
+              {formasPagamento.map(fp => (
+                <option key={fp.idformapgto} value={fp.idformapgto}>{fp.nome}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Valor Pago (R$)"
+              label="Valor Recebido (R$)"
               type="number"
               value={settleData.amountPaid}
               onChange={(e) => setSettleData({ ...settleData, amountPaid: parseFloat(e.target.value) })}
             />
             <Input
-              label="Data de Pagamento"
+              label="Data de Recebimento"
               type="date"
               value={settleData.paymentDate}
               onChange={(e) => setSettleData({ ...settleData, paymentDate: e.target.value })}

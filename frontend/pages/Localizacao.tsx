@@ -844,7 +844,7 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
 function Td({ children, right, bold }: { children: React.ReactNode; right?: boolean; bold?: boolean }) {
   return (
     <td className={cn('px-4 py-2', right && 'text-right')}>
-      <span className={cn('text-sm text-slate-700', bold && 'font-bold')}>{children}</span>
+      <span className={cn('text-xs text-slate-500', bold && 'font-bold text-slate-700')}>{children}</span>
     </td>
   );
 }
@@ -865,7 +865,7 @@ function Actions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => voi
 function EmptyRow({ cols }: { cols: number }) {
   return (
     <tr>
-      <td colSpan={cols} className="px-4 py-8 text-center text-sm text-slate-400">
+      <td colSpan={cols} className="px-4 py-8 text-center text-xs text-slate-400">
         Nenhum registro encontrado
       </td>
     </tr>

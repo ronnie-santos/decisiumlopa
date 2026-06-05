@@ -153,17 +153,17 @@ export function ProdutosServicosPage() {
         {/* Tabela */}
         {(() => {
           const cols: GridColumn<ProdutoServico>[] = [
-            { header: 'Código', render: item => <span className="text-sm font-bold text-[#B21212]">{item.idproduto}</span> },
-            { header: 'Descrição', render: item => <span className="text-sm font-medium text-slate-700">{item.descricao ?? '—'}</span> },
-            { header: 'NCM/SH', render: item => <span className="text-sm text-slate-500">{item.ncmsh ?? '—'}</span> },
-            { header: 'CST', render: item => <span className="text-sm text-slate-500">{item.cst ?? '—'}</span> },
-            { header: 'Unidade', render: item => <span className="text-sm text-slate-500">{item.unidade ?? '—'}</span> },
-            { header: 'IPI', render: item => <span className="text-sm text-slate-500">{fmtPct(item.ipi)}</span> },
-            { header: 'ICMS', render: item => <span className="text-sm text-slate-500">{fmtPct(item.icms)}</span> },
+            { header: 'Código', render: item => <span className="text-xs font-bold text-[#B21212]">{item.idproduto}</span> },
+            { header: 'Descrição', render: item => <span className="text-xs font-bold text-slate-700">{item.descricao ?? '—'}</span> },
+            { header: 'NCM/SH', render: item => <span className="text-xs text-slate-500">{item.ncmsh ?? '—'}</span> },
+            { header: 'CST', render: item => <span className="text-xs text-slate-500">{item.cst ?? '—'}</span> },
+            { header: 'Unidade', render: item => <span className="text-xs text-slate-500">{item.unidade ?? '—'}</span> },
+            { header: 'IPI', render: item => <span className="text-xs text-slate-500">{fmtPct(item.ipi)}</span> },
+            { header: 'ICMS', render: item => <span className="text-xs text-slate-500">{fmtPct(item.icms)}</span> },
             {
               header: 'Marca KM',
               render: item => (
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${item.marca_km ? 'bg-green-50 text-green-700' : 'bg-slate-50 text-slate-400'}`}>
+                <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase ${item.marca_km ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                   {item.marca_km ? 'Sim' : 'Não'}
                 </span>
               ),

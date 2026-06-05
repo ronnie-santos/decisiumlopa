@@ -416,13 +416,13 @@ export interface Bairro {
 
 
 export interface TextoPadrao { id: string; idtexto: number; texto: string; }
-export interface FormaPagamento { id: string; idformapgto: number; nome: string; cor_fundo?: number; cor_fonte?: number; }
+export interface FormaPagamento { id: string; idformapgto: number; nome: string; cor_fundo?: number; cor_fonte?: number; situacao?: string; }
 export interface FormaContato { id: string; idformacontato: number; nome: string; }
 export interface Contrato { id: string; idcontrato: number; descricao: string | null; clausulas: string | null; ativo: boolean; }
 export interface FornecedorAtividade { id: string; idatividade: number; descricao: string; }
 export interface FornecedorRamo { id: string; idramo: number; descricao: string; }
 export interface TipoEquipamento { id: string; idtipoequipamento: number; nome: string; }
-export interface FluxoFinanceiro { id: string; idfluxo: string; descricao: string; fluxo_pai?: string | null; tipo?: string | null; movimento?: string | null; codigo_importacao?: number | null; nivel?: number | null; }
+export interface FluxoFinanceiro { id: string; idfluxo: string; descricao: string; fluxo_pai?: string | null; tipo?: string | null; movimento?: string | null; codigo_importacao?: number | null; nivel?: number | null; status?: string | null; }
 export interface Licenca { id: string; idlicenca: number; data?: string; vencimento?: string; largura?: string; comprimento?: string; altura?: string; horario?: string; carretas?: string; pesos?: string; tara?: string; peso_carga?: string; pbt?: string; autorizacao?: string; orgao?: string; idequipamento?: number; estado?: string; despachante?: string; }
 export interface Seguro { 
   id: string; 

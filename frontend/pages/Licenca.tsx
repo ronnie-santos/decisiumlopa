@@ -175,17 +175,17 @@ export function LicencaPage() {
               header: 'Código',
               render: item => (
                 <>
-                  <span className="text-sm font-bold text-[#B21212]">{item.idlicenca}</span>
+                  <span className="text-xs font-bold text-[#B21212]">{item.idlicenca}</span>
                   {item.idequipamento && (() => {
                     const eq = equipments.find(e => String(e.id) === String(item.idequipamento));
-                    return eq ? <span className="ml-2 text-xs text-slate-500 font-normal">{eq.nome}</span> : null;
+                    return eq ? <span className="ml-2 text-xs text-slate-500">{eq.nome}</span> : null;
                   })()}
                 </>
               ),
             },
-            { header: 'Autorização', render: item => <span className="text-sm font-bold text-slate-700">{item.autorizacao}</span> },
-            { header: 'Órgão', render: item => <span className="text-sm text-slate-700">{item.orgao}</span> },
-            { header: 'Vencimento', render: item => <span className="text-sm text-slate-500">{item.vencimento ? new Date(item.vencimento).toLocaleDateString('pt-BR') : '-'}</span> },
+            { header: 'Autorização', render: item => <span className="text-xs font-bold text-slate-700">{item.autorizacao}</span> },
+            { header: 'Órgão', render: item => <span className="text-xs text-slate-500">{item.orgao}</span> },
+            { header: 'Vencimento', render: item => <span className="text-xs text-slate-500">{item.vencimento ? new Date(item.vencimento).toLocaleDateString('pt-BR') : '-'}</span> },
             {
               header: 'Ações',
               headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',

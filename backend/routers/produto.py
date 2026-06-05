@@ -22,12 +22,13 @@ def _load_produto(db: Session, idproduto: int) -> models.ProdutoServico:
 @router.get("", response_model=List[schemas.ProdutoServico])
 def list_produtos(
     descricao: Optional[str] = Query(None),
+    limit: int = Query(500),
     db: Session = Depends(get_db),
 ):
     q = db.query(models.ProdutoServico)
     if descricao:
         q = q.filter(models.ProdutoServico.descricao.ilike(f"%{descricao}%"))
-    return q.order_by(models.ProdutoServico.descricao).all()
+    return q.order_by(models.ProdutoServico.descricao).limit(limit).all()
 
 
 # ── Buscar por ID ─────────────────────────────────────────────────────────────

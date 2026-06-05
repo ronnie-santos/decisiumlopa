@@ -32,9 +32,9 @@ export function ServicoOferecidoPage() {
     .sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
 
   const servicoCols: GridColumn<Servico>[] = [
-    { header: 'Serviço', render: s => <span className="text-sm font-bold text-slate-700">{s.nome}</span> },
-    { header: 'Unidade', render: s => <span className="text-sm font-medium text-slate-500">{s.unidade || '-'}</span> },
-    { header: 'Valor Base', render: s => <span className="text-sm font-medium text-emerald-600">{s.valor ? `R$ ${Number(s.valor).toFixed(2).replace('.', ',')}` : '-'}</span> },
+    { header: 'Serviço', render: s => <span className="text-xs font-bold text-slate-700">{s.nome}</span> },
+    { header: 'Unidade', render: s => <span className="text-xs text-slate-500">{s.unidade || '-'}</span> },
+    { header: 'Valor Base', render: s => <span className="text-xs text-slate-500">{s.valor ? `R$ ${Number(s.valor).toFixed(2).replace('.', ',')}` : '-'}</span> },
     {
       header: 'Ações', headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',
       cellClass: 'px-4 py-2 text-right',

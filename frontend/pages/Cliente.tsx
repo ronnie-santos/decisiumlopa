@@ -490,32 +490,32 @@ export function ClientePage() {
           </div>
         ) : (() => {
           const cols: GridColumn<Client>[] = [
-            { header: 'ID', render: c => <span className="text-sm font-black text-[#B21212] drop-shadow-sm">{c.idcliente}</span> },
+            { header: 'ID', render: c => <span className="text-xs font-bold text-[#B21212]">{c.idcliente}</span> },
             {
               header: 'Cliente / Fantasia',
               render: c => (
                 <div className="flex flex-col">
-                  <span className="text-sm font-black text-slate-700 tracking-tight">{c.nome}</span>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{c.nomefantasia}</span>
+                  <span className="text-xs font-bold text-slate-700">{c.nome}</span>
+                  <span className="text-xs text-slate-400">{c.nomefantasia}</span>
                 </div>
               ),
             },
-            { header: 'CNPJ / CPF', render: c => <span className="text-sm font-bold text-slate-500 font-mono tracking-tighter">{c.cnpj_cpf}</span> },
+            { header: 'CNPJ / CPF', render: c => <span className="text-xs text-slate-500 font-mono">{c.cnpj_cpf}</span> },
             {
               header: 'Tipo',
               render: c => (
                 <span className={cn(
-                  "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border",
-                  c.tipo === 'PJ' ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-purple-50 text-purple-600 border-purple-100"
+                  "inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                  c.tipo === 'PJ' ? "bg-blue-50 text-blue-600" : "bg-purple-50 text-purple-600"
                 )}>
                   {c.tipo}
                 </span>
               ),
             },
-            { header: 'Cadastro', render: c => <span className="text-sm font-bold text-slate-500 italic lowercase tracking-tight">{c.data_cadastro}</span> },
+            { header: 'Cadastro', render: c => <span className="text-xs text-slate-500">{c.data_cadastro}</span> },
             {
-              header: 'Gestão',
-              headerClass: 'px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right',
+              header: 'Ações',
+              headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',
               cellClass: 'px-4 py-2 text-right',
               render: c => (
                 <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">

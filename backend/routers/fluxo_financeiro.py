@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from typing import List
+from typing import List, Optional
 
 import models, schemas
 from database import get_db
@@ -9,8 +9,21 @@ from database import get_db
 router = APIRouter(prefix="/fluxo-financeiro", tags=["fluxo_financeiro"])
 
 @router.get("", response_model=List[schemas.FluxoFinanceiro])
-def get_fluxo_financeiro(db: Session = Depends(get_db)):
-    return db.query(models.FluxoFinanceiro).order_by(models.FluxoFinanceiro.descricao.asc()).all()
+def get_fluxo_financeiro(
+    status: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    q = db.query(models.FluxoFinanceiro)
+    if status:
+        s = status.upper()
+        if s == 'ATIVO':
+            q = q.filter(
+                (models.FluxoFinanceiro.status == 'ATIVO') |
+                (models.FluxoFinanceiro.status == None)
+            )
+        else:
+            q = q.filter(models.FluxoFinanceiro.status == s)
+    return q.order_by(models.FluxoFinanceiro.descricao.asc()).all()
 
 @router.post("", response_model=schemas.FluxoFinanceiro)
 def create_fluxo_financeiro(fluxo: schemas.FluxoFinanceiroCreate, db: Session = Depends(get_db)):
@@ -31,9 +44,8 @@ def update_fluxo_financeiro(idfluxo: str, fluxo: schemas.FluxoFinanceiroCreate, 
     db_item = db.query(models.FluxoFinanceiro).filter(models.FluxoFinanceiro.idfluxo == idfluxo).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Fluxo financeiro não encontrado")
-    # Atualiza apenas campos que nao sao a PK
-    update_data = fluxo.model_dump(exclude_unset=True)
-    update_data.pop("idfluxo", None)  # nunca alterar a PK
+    update_data = fluxo.model_dump()
+    update_data.pop("idfluxo", None)
     for key, value in update_data.items():
         setattr(db_item, key, value)
     db.commit()

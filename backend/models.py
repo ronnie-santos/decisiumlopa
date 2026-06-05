@@ -375,6 +375,7 @@ class FluxoFinanceiro(Base):
     movimento = Column(String)
     codigo_importacao = Column(Integer)
     nivel = Column(Integer)
+    status = Column(String, default="ATIVO")
 
     @property
     def id(self): return self.idfluxo
@@ -464,7 +465,8 @@ class FormaPagamento(Base):
     nome = Column(String)
     cor_fundo = Column(Integer)
     cor_fonte = Column(Integer)
-    
+    situacao = Column(String, default='ATIVO')
+
     @property
     def id(self): return self.idformapgto
 
@@ -621,10 +623,26 @@ class ContasReceber(Base):
     ultimo_pagamento = Column(Date)
 
     fechamento_rel = relationship("Fechamento", back_populates="contas")
+    pagamento_cr   = relationship("PagamentosCR", back_populates="conta_receber_rel", uselist=False, cascade="all, delete-orphan")
 
     @property
     def id(self):
         return self.idcontasreceber
+
+
+# =============================================
+# PAGAMENTOS CONTAS A RECEBER
+# =============================================
+class PagamentosCR(Base):
+    __tablename__ = "pagamentos_cr"
+    idcontasreceber = Column(Integer, ForeignKey("contas_receber.idcontasreceber"), primary_key=True)
+    idformapgto     = Column(Integer, ForeignKey("forma_pagamento.idformapgto"), nullable=False)
+    valor           = Column(Numeric(15, 2), nullable=False)
+    data            = Column(Date, nullable=False)
+
+    conta_receber_rel   = relationship("ContasReceber", back_populates="pagamento_cr")
+    forma_pagamento_rel = relationship("FormaPagamento")
+
 
 
 # =============================================
@@ -722,10 +740,27 @@ class ContasPagar(Base):
     valor_original = Column(Numeric(15, 2))
 
     compra_rel = relationship("Compra", back_populates="contas_pagar")
+    pagamento_cp = relationship("PagamentosCP", back_populates="conta_pagar_rel", uselist=False, cascade="all, delete-orphan")
 
     @property
     def id(self):
         return self.idcontaspagar
+
+
+# =============================================
+# PAGAMENTOS CONTAS A PAGAR
+# =============================================
+class PagamentosCP(Base):
+    __tablename__ = "pagamentos_cp"
+    idcontaspagar = Column(Integer, ForeignKey("contas_pagar.idcontaspagar"), primary_key=True)
+    idformapgto   = Column(Integer, ForeignKey("forma_pagamento.idformapgto"), nullable=False)
+    valor         = Column(Numeric(15, 2), nullable=False)
+    data          = Column(Date, nullable=False)
+    numero_cheque = Column(String)
+    banco         = Column(String)
+
+    conta_pagar_rel     = relationship("ContasPagar", back_populates="pagamento_cp")
+    forma_pagamento_rel = relationship("FormaPagamento")
 
 
 # =============================================

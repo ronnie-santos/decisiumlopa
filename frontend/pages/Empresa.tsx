@@ -402,7 +402,7 @@ export function EmpresaPage() {
         {/* Table */}
         {(() => {
           const cols: GridColumn<Company>[] = [
-            { header: 'Código', render: c => <span className="text-sm font-bold text-[#B21212]">{c.id}</span> },
+            { header: 'Código', render: c => <span className="text-xs font-bold text-[#B21212]">{c.id}</span> },
             {
               header: 'Empresa',
               render: c => (
@@ -421,21 +421,21 @@ export function EmpresaPage() {
                     )
                   }
                   <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-bold text-slate-700 truncate">{c.nomefantasia}</span>
+                    <span className="text-xs font-bold text-slate-700 truncate">{c.nomefantasia}</span>
                     <span className="text-xs text-slate-400 truncate">{c.nome}</span>
                   </div>
                 </div>
               ),
             },
-            { header: 'CNPJ',   render: c => <span className="text-sm text-slate-500">{c.cnpj}</span> },
-            { header: 'Estado', render: c => <span className="text-sm text-slate-500">{c.idestado}</span> },
+            { header: 'CNPJ',   render: c => <span className="text-xs text-slate-500">{c.cnpj}</span> },
+            { header: 'Estado', render: c => <span className="text-xs text-slate-500">{c.idestado}</span> },
             {
               header: 'Status',
               headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center',
               cellClass:   'px-4 py-2 text-center',
               render: c => (
                 <span className={cn(
-                  'inline-flex px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border',
+                  'inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase',
                   statusColors[c.status]
                 )}>
                   {c.status}

@@ -78,17 +78,21 @@ export function ContasPagarPage() {
   const [filterFornecedor, setFilterFornecedor] = useState('');
   const [filterVencDe, setFilterVencDe]         = useState('');
   const [filterVencAte, setFilterVencAte]       = useState('');
-  const [filterStatus, setFilterStatus]         = useState('');
+  const [filterStatus, setFilterStatus]         = useState('PENDENTE');
+
+  // ── Formas de Pagamento ───────────────────────────────────────────────────────
+  const [formasPagamento, setFormasPagamento] = useState<{ idformapgto: number; nome: string }[]>([]);
 
   // ── Baixa (Settle) Modal ─────────────────────────────────────────────────────
-  const [settleTarget, setSettleTarget]         = useState<ContasPagarAPI | null>(null);
-  const [isSettleOpen, setIsSettleOpen]         = useState(false);
-  const [settleAmountPaid, setSettleAmountPaid] = useState(0);
-  const [settleDate, setSettleDate]             = useState(today);
-  const [settleObs, setSettleObs]               = useState('');
-  const [paying, setPaying]                     = useState(false);
-  const [payError, setPayError]                 = useState<string | null>(null);
-  const [paySuccess, setPaySuccess]             = useState(false);
+  const [settleTarget, setSettleTarget]               = useState<ContasPagarAPI | null>(null);
+  const [isSettleOpen, setIsSettleOpen]               = useState(false);
+  const [settleAmountPaid, setSettleAmountPaid]       = useState(0);
+  const [settleDate, setSettleDate]                   = useState(today);
+  const [settleObs, setSettleObs]                     = useState('');
+  const [settleFormaPagamento, setSettleFormaPagamento] = useState<number | null>(null);
+  const [paying, setPaying]                           = useState(false);
+  const [payError, setPayError]                       = useState<string | null>(null);
+  const [paySuccess, setPaySuccess]                   = useState(false);
 
   // ── Cancelar Baixa Modal ──────────────────────────────────────────────────────
   const [cancelTarget, setCancelTarget]       = useState<ContasPagarAPI | null>(null);
@@ -136,6 +140,13 @@ export function ContasPagarPage() {
 
   useEffect(() => { loadData(page); }, [page, loadData]);
 
+  useEffect(() => {
+    fetch('/api/formapagamento?situacao=ATIVO')
+      .then(r => r.json())
+      .then(d => setFormasPagamento(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
+
   // ── Aplicar filtros (reseta para página 1) ────────────────────────────────
   const handleFilter = () => {
     if (page === 1) loadData(1);
@@ -160,19 +171,29 @@ export function ContasPagarPage() {
     setSettleAmountPaid(c.valor ?? 0);
     setSettleDate(today());
     setSettleObs(c.observacao ?? '');
+    setSettleFormaPagamento(null);
     setPayError(null);
     setIsSettleOpen(true);
   };
 
   const handleConfirmSettle = async () => {
     if (!settleTarget) return;
+    if (!settleFormaPagamento) {
+      setPayError('Selecione a forma de pagamento para registrar a baixa.');
+      return;
+    }
     setPaying(true);
     setPayError(null);
     try {
       const res = await fetch(`/api/contas-pagar/${settleTarget.idcontaspagar}/pagar`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ valor_pago: settleAmountPaid, data_pagamento: settleDate, observacao: settleObs || null }),
+        body: JSON.stringify({
+          valor_pago: settleAmountPaid,
+          data_pagamento: settleDate,
+          observacao: settleObs || null,
+          idformapgto: settleFormaPagamento,
+        }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -323,20 +344,20 @@ export function ContasPagarPage() {
                 return (
                   <tr key={c.idcontaspagar} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-4 py-2">
-                      <span className="text-sm font-bold text-[#B21212]">#{c.idcontaspagar}</span>
+                      <span className="text-xs font-bold text-[#B21212]">#{c.idcontaspagar}</span>
                       {c.nota_numero && (
                         <span className="block text-[10px] text-slate-400">NF {c.nota_numero}</span>
                       )}
                     </td>
                     <td className="px-4 py-2">
-                      <span className="text-sm font-bold text-slate-700">
+                      <span className="text-xs font-bold text-slate-700">
                         {c.fornecedor_nome ?? '—'}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-sm text-slate-500">{c.parcela ?? '—'}</td>
-                    <td className="px-4 py-2 text-sm text-slate-500">{fmtDate(c.vencimento)}</td>
+                    <td className="px-4 py-2 text-xs text-slate-500">{c.parcela ?? '—'}</td>
+                    <td className="px-4 py-2 text-xs text-slate-500">{fmtDate(c.vencimento)}</td>
                     <td className="px-4 py-2">
-                      <span className="text-sm font-bold text-slate-700">{fmtCurrency(c.valor ?? 0)}</span>
+                      <span className="text-xs font-bold text-slate-700">{fmtCurrency(c.valor ?? 0)}</span>
                     </td>
                     <td className="px-4 py-2 text-center">
                       <span className={cn(
@@ -436,6 +457,22 @@ export function ContasPagarPage() {
                 <p className="text-sm font-bold text-slate-700">{fmtCurrency(settleTarget?.valor ?? 0)}</p>
               </div>
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Forma de Pagamento <span className="text-red-500">*</span>
+            </label>
+            <select
+              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[#B21212]/20"
+              value={settleFormaPagamento ?? ''}
+              onChange={e => setSettleFormaPagamento(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">Selecione a forma de pagamento...</option>
+              {formasPagamento.map(fp => (
+                <option key={fp.idformapgto} value={fp.idformapgto}>{fp.nome}</option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

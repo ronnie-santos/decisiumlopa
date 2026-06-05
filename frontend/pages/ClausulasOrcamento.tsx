@@ -48,7 +48,7 @@ export function ClausulasOrcamentoPage() {
       header: 'Cód.',
       headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest w-16',
       cellClass: 'px-4 py-2',
-      render: i => <span className="text-sm font-bold text-[#B21212]">{i.idcontrato}</span>,
+      render: i => <span className="text-xs font-bold text-[#B21212]">{i.idcontrato}</span>,
     },
     {
       header: 'Descrição',
@@ -57,14 +57,14 @@ export function ClausulasOrcamentoPage() {
           <div className="h-7 w-7 rounded-md bg-red-50 flex items-center justify-center flex-shrink-0">
             <FileText className="h-3.5 w-3.5 text-[#B21212]" />
           </div>
-          <span className="text-sm font-semibold text-slate-700">{i.descricao ?? '—'}</span>
+          <span className="text-xs font-bold text-slate-700">{i.descricao ?? '—'}</span>
         </div>
       ),
     },
     {
       header: 'Cláusulas',
       render: i => (
-        <span className="text-sm text-slate-500 line-clamp-2">
+        <span className="text-xs text-slate-500 line-clamp-2">
           {i.clausulas ? i.clausulas.substring(0, 120) + (i.clausulas.length > 120 ? '…' : '') : '—'}
         </span>
       ),
@@ -75,10 +75,10 @@ export function ClausulasOrcamentoPage() {
       cellClass: 'px-4 py-2 text-center',
       render: i => (
         <span className={cn(
-          'inline-flex px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border',
+          'inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase',
           i.ativo
-            ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-            : 'bg-slate-50 text-slate-500 border-slate-200'
+            ? 'bg-emerald-50 text-emerald-600'
+            : 'bg-slate-100 text-slate-500'
         )}>
           {i.ativo ? 'Ativo' : 'Inativo'}
         </span>

@@ -154,6 +154,9 @@ export function Sidebar() {
             { to: '/reports/comissao',           label: 'Comissão',                   modulo: 'rel_comissao' },
             { to: '/reports/dre',                label: 'DRE',                        modulo: 'rel_dre' },
             { to: '/reports/analise-financeira', label: 'Análise Financeira',         modulo: 'rel_analise_financeira' },
+            { to: '/reports/notas-fiscais',      label: 'Notas Fiscais Emitidas',     modulo: 'nota_fiscal' },
+            { to: '/reports/despesas-receita',      label: 'Despesas vs Receita',        modulo: 'rel_fluxo_caixa' },
+            { to: '/reports/conciliacao-bancaria', label: 'Conciliação Bancária',        modulo: 'rel_contas_pagar' },
           ]}
         />
       </nav>

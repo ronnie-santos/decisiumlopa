@@ -43,6 +43,9 @@ import { RelatorioComprasProdutosPage } from './pages/RelatorioComprasProdutos';
 import { RelatorioFluxoCaixaPage } from './pages/RelatorioFluxoCaixa';
 import { RelatorioDREPage } from './pages/RelatorioDRE';
 import { RelatorioAnaliseFinanceiraPage } from './pages/RelatorioAnaliseFinanceira';
+import { RelatorioNotasFiscaisPage } from './pages/RelatorioNotasFiscais';
+import { RelatorioDespesasReceitaPage } from './pages/RelatorioDespesasReceita';
+import { RelatorioConciliacaoBancariaPage } from './pages/RelatorioConciliacaoBancaria';
 import { ClausulasOrcamentoPage } from './pages/ClausulasOrcamento';
 import { SemAcessoPage } from './pages/SemAcesso';
 import { PrivateRoute } from './components/PrivateRoute';
@@ -101,7 +104,10 @@ export default function App() {
             <Route path="reports/cash-flow" element={<PrivateRoute modulo="rel_fluxo_caixa"><RelatorioFluxoCaixaPage /></PrivateRoute>} />
             <Route path="reports/dre" element={<PrivateRoute modulo="rel_dre"><RelatorioDREPage /></PrivateRoute>} />
             <Route path="reports/analise-financeira" element={<PrivateRoute modulo="rel_analise_financeira"><RelatorioAnaliseFinanceiraPage /></PrivateRoute>} />
+            <Route path="reports/notas-fiscais" element={<PrivateRoute modulo="nota_fiscal"><RelatorioNotasFiscaisPage /></PrivateRoute>} />
+            <Route path="reports/despesas-receita" element={<PrivateRoute modulo="rel_fluxo_caixa"><RelatorioDespesasReceitaPage /></PrivateRoute>} />
             <Route path="reports/clientes" element={<PrivateRoute modulo="rel_clientes"><RelatorioListagemClientesPage /></PrivateRoute>} />
+            <Route path="reports/conciliacao-bancaria" element={<PrivateRoute modulo="rel_contas_pagar"><RelatorioConciliacaoBancariaPage /></PrivateRoute>} />
 
             <Route path="settings" element={<Placeholder title="Configurações Gerais" />} />
             <Route path="settings/offered-services" element={<PrivateRoute modulo="servicos_oferecidos"><ServicoOferecidoPage /></PrivateRoute>} />

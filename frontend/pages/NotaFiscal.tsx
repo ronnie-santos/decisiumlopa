@@ -88,6 +88,7 @@ interface ParsedXML {
   valor_nota: number | null;
   valor_liquido: number | null;
   iss: number | null;
+  inss: number | null;
   base_calculo: number | null;
   valor_servicos: number | null;
   total_retencao: number | null;
@@ -591,6 +592,7 @@ export function NotaFiscalPage() {
       base_calculo: parsedXml.base_calculo != null ? parsedXml.base_calculo.toFixed(2) : '',
       valor_liquido: parsedXml.valor_liquido != null ? parsedXml.valor_liquido.toFixed(2) : '',
       iss: parsedXml.iss != null ? parsedXml.iss.toFixed(2) : '',
+      inss: parsedXml.inss != null ? parsedXml.inss.toFixed(2) : '',
       total_retencao: parsedXml.total_retencao != null ? parsedXml.total_retencao.toFixed(2) : '',
       pis: parsedXml.pis != null ? parsedXml.pis.toFixed(2) : '',
       link: parsedXml.link ?? '',

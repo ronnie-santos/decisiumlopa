@@ -15,6 +15,7 @@ router = APIRouter(
 @router.get("", response_model=List[schemas.Equipamento])
 def get_equipamentos(
     search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
     limit: int = Query(500),
     db: Session = Depends(get_db),
 ):
@@ -27,6 +28,8 @@ def get_equipamentos(
                 models.Equipamento.placa.ilike(term),
             )
         )
+    if status:
+        q = q.filter(models.Equipamento.status.ilike(status))
     equipamentos = q.order_by(models.Equipamento.nome.asc()).limit(limit).all()
     return [schemas.Equipamento.model_validate(e) for e in equipamentos]
 

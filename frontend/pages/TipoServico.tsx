@@ -32,8 +32,8 @@ export function TipoServicoPage() {
     .sort((a, b) => Number(a.id) - Number(b.id));
 
   const cols: GridColumn<TipoServico>[] = [
-    { header: 'Código', render: t => <span className="text-sm font-bold text-[#B21212]">{t.id}</span> },
-    { header: 'Descrição', render: t => <span className="text-sm font-bold text-slate-700">{t.descricao}</span> },
+    { header: 'Código', render: t => <span className="text-xs font-bold text-[#B21212]">{t.id}</span> },
+    { header: 'Descrição', render: t => <span className="text-xs font-bold text-slate-700">{t.descricao}</span> },
     {
       header: 'Ações', headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',
       cellClass: 'px-4 py-2 text-right',

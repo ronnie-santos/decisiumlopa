@@ -38,7 +38,7 @@ from routers import (
     fechamento, contas_receber, produto, compras, contaspagar, dashboard, test,
     conhecimento, nota_fiscal, logradouro,
     pais, estado, cidade, bairro, cep,
-    fluxo_caixa, contratos,
+    fluxo_caixa, contratos, conciliacao,
 )
 
 app.include_router(auxiliares.router)
@@ -82,3 +82,4 @@ app.include_router(bairro.router)
 app.include_router(cep.router)
 app.include_router(fluxo_caixa.router)
 app.include_router(contratos.router)
+app.include_router(conciliacao.router)

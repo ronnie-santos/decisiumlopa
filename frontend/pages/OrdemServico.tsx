@@ -5,7 +5,7 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { ClienteAutocomplete, ClienteOption } from '../components/ui/ClienteAutocomplete';
 import { EquipamentoAutocomplete, EquipamentoOption } from '../components/ui/EquipamentoAutocomplete';
-import { Plus, Search, Eye, Edit2, Printer, Trash2, ChevronLeft, ChevronRight, TrendingUp, Clock, CheckCircle2, Link2 } from 'lucide-react';
+import { Plus, Search, Eye, Edit2, Printer, Trash2, ChevronLeft, ChevronRight, TrendingUp, Clock, CheckCircle2, Link2, AlertCircle, X } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 // ── Local types ───────────────────────────────────────────────────────────────
@@ -220,6 +220,13 @@ export function OrdemServicoPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 6000);
+    return () => clearTimeout(t);
+  }, [error]);
+  const [deleteOrder, setDeleteOrder] = useState<OrdemAPI | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Select list options
   const [empresas, setEmpresas] = useState<EmpresaOpt[]>([]);
@@ -317,7 +324,7 @@ export function OrdemServicoPage() {
         const [empresasRes, funcRes, fluxoRes, tipoRes] =
           await Promise.all([
             fetch('/api/empresas'),
-            fetch('/api/funcionarios'),
+            fetch('/api/funcionarios?situacao=ATIVO'),
             fetch('/api/fluxo-financeiro'),
             fetch('/api/tipo_servico'),
           ]);
@@ -440,6 +447,13 @@ export function OrdemServicoPage() {
 
   // ── Save ─────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
+    if (!formData.idempresa)    { setError('Selecione a empresa.'); return; }
+    if (!formData.idcliente)    { setError('Selecione o cliente.'); return; }
+    if (!formData.idequipamento){ setError('Selecione o equipamento.'); return; }
+    if (!formData.idfuncionario){ setError('Selecione o Funcionário 1 responsável.'); return; }
+    if (!formData.idfluxo)      { setError('Selecione o fluxo financeiro.'); return; }
+    if (!formData.idservico)    { setError('Selecione o tipo de serviço.'); return; }
+    if (!formData.valor_os)     { setError('O valor total da OS não pode ser zero.'); return; }
     setSaving(true);
     setError(null);
     try {
@@ -474,27 +488,24 @@ export function OrdemServicoPage() {
   };
 
   // ── Delete ───────────────────────────────────────────────────────────────────
-  const handleDelete = async (order: OrdemAPI) => {
-    if (order.situacao === true) {
-      alert('Não é possível excluir uma Ordem de Serviço fechada.');
-      return;
-    }
-    const label = order.numero_os
-      ? `#OS-${String(order.numero_os).padStart(4, '0')}`
-      : `#${order.idordem}`;
-    if (!window.confirm(`Deseja realmente excluir a Ordem de Serviço ${label}? Esta ação não pode ser desfeita.`)) return;
+  const handleDelete = (order: OrdemAPI) => {
+    setDeleteOrder(order);
+    setDeleteError(null);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteOrder) return;
     try {
-      const res = await fetch(`/api/ordens/${order.idordem}`, { method: 'DELETE' });
-      if (!res.ok) {
+      const res = await fetch(`/api/ordens/${deleteOrder.idordem}`, { method: 'DELETE' });
+      if (res.ok) {
+        setDeleteOrder(null);
+        await reloadOrdens();
+      } else {
         const body = await res.json().catch(() => ({}));
-        const detail = body.detail || `Erro ${res.status}`;
-        alert(`Erro ao excluir: ${detail}`);
-        return;
+        setDeleteError(body.detail || 'Erro ao excluir.');
       }
-      await reloadOrdens();
     } catch {
-      alert('Erro ao excluir a Ordem de Serviço.');
+      setDeleteError('Erro de conexão.');
     }
   };
 
@@ -514,6 +525,15 @@ export function OrdemServicoPage() {
 
   return (
     <div className="flex flex-col h-full">
+      {error && (
+        <div className="fixed top-4 right-4 z-[120] max-w-sm p-4 rounded-lg shadow-2xl flex items-start gap-3 bg-red-50 border border-red-200">
+          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm font-semibold text-red-700 flex-1">{error}</p>
+          <button onClick={() => setError(null)}>
+            <X className="h-4 w-4 text-red-400 hover:text-red-600" />
+          </button>
+        </div>
+      )}
       <Header title="Ordens de Serviço" />
 
       <div className="p-5 space-y-4">
@@ -764,7 +784,6 @@ export function OrdemServicoPage() {
             <Button onClick={() => setIsModalOpen(false)} className="px-8">OK</Button>
           ) : (
             <>
-              {error && <span className="text-xs text-red-500 mr-auto">{error}</span>}
               <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? 'Salvando...' : editingId ? 'Salvar Alterações' : 'Salvar OS'}
@@ -1124,6 +1143,7 @@ export function OrdemServicoPage() {
                   onChange={handleEquipamentoChange}
                   disabled={isViewOnly}
                   placeholder="Digite 2+ caracteres para buscar..."
+                  statusFilter="DISPONÍVEL"
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1189,7 +1209,7 @@ export function OrdemServicoPage() {
                   disabled={isViewOnly}
                 >
                   <option value="">Selecione um item...</option>
-                  {fluxos.filter(f => f.movimento === 'R' && f.tipo === 'A').map(f => (
+                  {fluxos.filter(f => String(f.idfluxo).startsWith('1') && f.status !== 'INATIVO').map(f => (
                     <option key={f.idfluxo} value={f.idfluxo}>
                       {f.idfluxo}{f.descricao ? ` — ${f.descricao}` : ''}
                     </option>
@@ -1279,6 +1299,58 @@ export function OrdemServicoPage() {
             </table>
           </div>
         )}
+      </Modal>
+
+      {/* ── Modal Exclusão ── */}
+      <Modal
+        isOpen={!!deleteOrder}
+        onClose={() => setDeleteOrder(null)}
+        title={deleteOrder?.situacao === true ? 'Ordem Fechada' : 'Confirmar Exclusão'}
+        className="max-w-md"
+        footer={
+          deleteOrder?.situacao === true ? (
+            <Button onClick={() => setDeleteOrder(null)} className="px-8">Fechar</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setDeleteOrder(null)}>Cancelar</Button>
+              <Button onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">Confirmar Exclusão</Button>
+            </>
+          )
+        }
+      >
+        <div className="flex flex-col items-center text-center space-y-4 py-4">
+          <div className={cn('h-16 w-16 rounded-full flex items-center justify-center', deleteOrder?.situacao === true ? 'bg-amber-50' : 'bg-red-50')}>
+            <AlertCircle className={cn('h-8 w-8', deleteOrder?.situacao === true ? 'text-amber-500' : 'text-red-600')} />
+          </div>
+          {deleteOrder?.situacao === true ? (
+            <div>
+              <h4 className="text-lg font-bold text-slate-800">Não é possível excluir</h4>
+              <p className="text-sm text-slate-500 mt-1">
+                A Ordem de Serviço{' '}
+                <span className="font-bold text-slate-700">
+                  {deleteOrder.numero_os ? `#OS-${String(deleteOrder.numero_os).padStart(4, '0')}` : `#${deleteOrder.idordem}`}
+                </span>{' '}
+                está <span className="font-semibold text-emerald-600">Fechada</span> e não pode ser excluída.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <h4 className="text-lg font-bold text-slate-800">Você tem certeza?</h4>
+              <p className="text-sm text-slate-500 mt-1">
+                Deseja realmente excluir a Ordem de Serviço{' '}
+                <span className="font-bold text-slate-700">
+                  {deleteOrder?.numero_os ? `#OS-${String(deleteOrder.numero_os).padStart(4, '0')}` : `#${deleteOrder?.idordem}`}
+                </span>
+                ? Esta ação não pode ser desfeita.
+              </p>
+            </div>
+          )}
+          {deleteError && (
+            <div className="w-full p-3 bg-red-50 border border-red-100 rounded-lg">
+              <p className="text-xs text-red-600 font-medium">{deleteError}</p>
+            </div>
+          )}
+        </div>
       </Modal>
     </div>
   );

@@ -3,26 +3,25 @@ import { createPortal } from 'react-dom';
 import { Search, Loader2, X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
-export interface EquipamentoOption {
-  idequipamento: number;
-  nome: string;
-  placa: string | null;
+export interface ProdutoOption {
+  idproduto: number;
+  descricao: string | null;
+  unidade: string | null;
 }
 
 interface Props {
-  value: number;
+  value: number | '';
   displayName: string;
-  onChange: (eq: EquipamentoOption | null) => void;
+  onChange: (produto: ProdutoOption | null) => void;
   disabled?: boolean;
   placeholder?: string;
-  statusFilter?: string;
 }
 
 interface DropdownPos { top: number; left: number; width: number }
 
-export function EquipamentoAutocomplete({ value, displayName, onChange, disabled, placeholder, statusFilter }: Props) {
+export function ProdutoAutocomplete({ value, displayName, onChange, disabled, placeholder }: Props) {
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<EquipamentoOption[]>([]);
+  const [suggestions, setSuggestions] = useState<ProdutoOption[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [highlight, setHighlight] = useState(-1);
@@ -32,21 +31,20 @@ export function EquipamentoAutocomplete({ value, displayName, onChange, disabled
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!isOpen) setQuery(value ? displayName : '');
+    if (!isOpen) setQuery(value !== '' ? displayName : '');
   }, [value, displayName, isOpen]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
-        setQuery(value ? displayName : '');
+        setQuery(value !== '' ? displayName : '');
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [value, displayName]);
 
-  // Reposition on scroll/resize so portal stays anchored to input
   useEffect(() => {
     if (!isOpen) return;
     const update = () => {
@@ -70,14 +68,13 @@ export function EquipamentoAutocomplete({ value, displayName, onChange, disabled
   };
 
   const search = useCallback(async (q: string) => {
-    if (q.length < 2) { setSuggestions([]); setIsOpen(false); return; }
+    if (q.length < 3) { setSuggestions([]); setIsOpen(false); return; }
     setLoading(true);
     try {
-      const params = new URLSearchParams({ search: q, limit: '20' });
-      if (statusFilter) params.set('status', statusFilter);
-      const r = await fetch(`/api/equipamentos?${params}`);
+      const params = new URLSearchParams({ descricao: q, limit: '15' });
+      const r = await fetch(`/api/produtos?${params}`);
       if (r.ok) {
-        const data: EquipamentoOption[] = await r.json();
+        const data: ProdutoOption[] = await r.json();
         setSuggestions(data.slice(0, 15));
         openDropdown();
         setIsOpen(true);
@@ -86,7 +83,7 @@ export function EquipamentoAutocomplete({ value, displayName, onChange, disabled
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
@@ -96,11 +93,11 @@ export function EquipamentoAutocomplete({ value, displayName, onChange, disabled
     debounceRef.current = setTimeout(() => search(v), 300);
   };
 
-  const handleSelect = (eq: EquipamentoOption) => {
-    setQuery(eq.placa ? `${eq.nome} — ${eq.placa}` : eq.nome);
+  const handleSelect = (p: ProdutoOption) => {
+    setQuery(p.descricao || '');
     setIsOpen(false);
     setSuggestions([]);
-    onChange(eq);
+    onChange(p);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -116,7 +113,7 @@ export function EquipamentoAutocomplete({ value, displayName, onChange, disabled
       if (highlight >= 0) handleSelect(suggestions[highlight]);
     } else if (e.key === 'Escape') {
       setIsOpen(false);
-      setQuery(value ? displayName : '');
+      setQuery(value !== '' ? displayName : '');
     }
   };
 
@@ -128,26 +125,26 @@ export function EquipamentoAutocomplete({ value, displayName, onChange, disabled
     inputRef.current?.focus();
   };
 
-  const showNoResults = isOpen && !loading && suggestions.length === 0 && query.length >= 2;
+  const showNoResults = isOpen && !loading && suggestions.length === 0 && query.length >= 3;
 
   const dropdown = (isOpen && suggestions.length > 0 && dropPos) ? createPortal(
     <ul
       style={{ position: 'absolute', top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
       className="bg-white border border-slate-200 rounded-lg shadow-xl max-h-72 overflow-y-auto"
     >
-      {suggestions.map((eq, idx) => (
-        <li key={eq.idequipamento}>
+      {suggestions.map((p, idx) => (
+        <li key={p.idproduto}>
           <button
             type="button"
             className={cn(
               'w-full text-left px-3 py-2.5 flex flex-col gap-0.5 hover:bg-red-50/60 transition-colors border-b border-slate-50 last:border-0',
               idx === highlight && 'bg-red-50/80'
             )}
-            onMouseDown={e => { e.preventDefault(); handleSelect(eq); }}
+            onMouseDown={e => { e.preventDefault(); handleSelect(p); }}
             onMouseEnter={() => setHighlight(idx)}
           >
-            <span className="text-sm font-semibold text-slate-700">{eq.nome}</span>
-            {eq.placa && <span className="text-xs text-slate-400">{eq.placa}</span>}
+            <span className="text-sm font-semibold text-slate-700">{p.descricao || `#${p.idproduto}`}</span>
+            {p.unidade && <span className="text-xs text-slate-400">Unidade: {p.unidade}</span>}
           </button>
         </li>
       ))}
@@ -160,7 +157,7 @@ export function EquipamentoAutocomplete({ value, displayName, onChange, disabled
       style={{ position: 'absolute', top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
       className="bg-white border border-slate-200 rounded-lg shadow-xl px-3 py-4 text-sm text-slate-400 text-center"
     >
-      Nenhum equipamento encontrado para "{query}".
+      Nenhum produto encontrado para "{query}".
     </div>,
     document.body
   ) : null;
@@ -177,7 +174,7 @@ export function EquipamentoAutocomplete({ value, displayName, onChange, disabled
             'h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-[#B21212]/20',
             disabled && 'bg-slate-50 text-slate-500 cursor-default'
           )}
-          placeholder={placeholder ?? 'Digite 2+ caracteres para buscar...'}
+          placeholder={placeholder ?? 'Digite 3+ caracteres para buscar...'}
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
@@ -186,7 +183,7 @@ export function EquipamentoAutocomplete({ value, displayName, onChange, disabled
         <div className="absolute right-2.5 flex items-center">
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin text-[#B21212]" />
-          ) : value > 0 && !disabled ? (
+          ) : value !== '' && !disabled ? (
             <button type="button" onClick={handleClear} className="text-slate-400 hover:text-slate-600 transition-colors">
               <X className="h-3.5 w-3.5" />
             </button>

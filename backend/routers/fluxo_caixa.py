@@ -267,3 +267,195 @@ def relatorio_fluxo_caixa_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": "inline; filename=fluxo_caixa.pdf"},
     )
+
+
+# ── Despesas vs Receita (DRE) ─────────────────────────────────────────────────
+
+def _ordem_key(idfluxo: str) -> str:
+    """Converts '1.2.3' → '001003004' for hierarchical sorting."""
+    parts = idfluxo.split('.')
+    return ''.join(p.zfill(4) for p in parts)
+
+
+@router.get("/despesas-receita")
+def relatorio_despesas_receita(
+    data_de: date = Query(...),
+    data_ate: date = Query(...),
+    idempresa: Optional[int] = Query(None),
+    tipo_receita: str = Query("ordens"),    # ordens | fat_gerados | fat_recebidos
+    tipo_despesa: str = Query("vencidas"),  # vencidas | pagas
+    db: Session = Depends(get_db),
+):
+    # 1. Load all FluxoFinanceiro into DRE structure
+    # idfluxo and fluxo_pai are stripped to guard against legacy trailing spaces
+    all_fluxo = db.query(models.FluxoFinanceiro).all()
+    dre: dict[str, dict] = {
+        f.idfluxo.strip(): {
+            "idfluxo":   f.idfluxo.strip(),
+            "descricao": f.descricao or "",
+            "nivel":     f.nivel or 0,
+            "fluxo_pai": (f.fluxo_pai or "").strip(),
+            "valor":     0.0,
+        }
+        for f in all_fluxo
+    }
+
+    def add_value(leaf_idfluxo: str, valor: float) -> None:
+        current = leaf_idfluxo.strip() if leaf_idfluxo else ""
+        visited: set[str] = set()
+        while current and current in dre and current not in visited:
+            visited.add(current)
+            dre[current]["valor"] += valor
+            current = dre[current]["fluxo_pai"]
+
+    total_receitas = 0.0
+    total_despesas = 0.0
+
+    # 2. Despesas — via contas_pagar → compras → fluxo
+    if tipo_despesa == "vencidas":
+        # Todas as contas a pagar com vencimento no período, independente do status
+        q = (
+            db.query(models.ContasPagar.valor, models.Compra.idfluxo)
+            .join(models.Compra, models.ContasPagar.idcompras == models.Compra.idcompras)
+            .filter(
+                models.ContasPagar.vencimento >= data_de,
+                models.ContasPagar.vencimento <= data_ate,
+                models.Compra.idfluxo.isnot(None),
+            )
+        )
+        if idempresa:
+            q = q.filter(models.Compra.idempresa == idempresa)
+        for row in q.all():
+            key = (row.idfluxo or "").strip()
+            if not key or key not in dre:
+                continue
+            v = float(row.valor or 0)
+            add_value(key, -v)
+            total_despesas += v
+    else:  # pagas
+        # Contas a pagar com vencimento no período e status PAGO (situacao=True)
+        q = (
+            db.query(models.ContasPagar.valor_pago, models.Compra.idfluxo)
+            .join(models.Compra, models.ContasPagar.idcompras == models.Compra.idcompras)
+            .filter(
+                models.ContasPagar.vencimento >= data_de,
+                models.ContasPagar.vencimento <= data_ate,
+                models.ContasPagar.situacao == True,   # noqa: E712
+                models.ContasPagar.valor_pago.isnot(None),
+                models.Compra.idfluxo.isnot(None),
+            )
+        )
+        if idempresa:
+            q = q.filter(models.Compra.idempresa == idempresa)
+        for row in q.all():
+            key = (row.idfluxo or "").strip()
+            if not key or key not in dre:
+                continue
+            v = float(row.valor_pago or 0)
+            add_value(key, -v)
+            total_despesas += v
+
+    # 3. Receitas
+    if tipo_receita == "ordens":
+        q = (
+            db.query(models.Ordem.valor_os, models.Ordem.idfluxo)
+            .filter(
+                models.Ordem.data >= data_de,
+                models.Ordem.data <= data_ate,
+                models.Ordem.idfluxo.isnot(None),
+            )
+        )
+        if idempresa:
+            q = q.filter(models.Ordem.idempresa == idempresa)
+        for row in q.all():
+            key = (row.idfluxo or "").strip()
+            if not key or key not in dre:
+                continue
+            v = float(row.valor_os or 0)
+            add_value(key, v)
+            total_receitas += v
+    elif tipo_receita == "fat_gerados":
+        # Subquery: one idfluxo per fechamento (first ordem by idordem) — mirrors Progress "FIND FIRST ORDEM"
+        fluxo_por_fech = (
+            db.query(models.Ordem.idfechamento, models.Ordem.idfluxo)
+            .filter(
+                models.Ordem.idfechamento.isnot(None),
+                models.Ordem.idfluxo.isnot(None),
+            )
+            .order_by(models.Ordem.idfechamento, models.Ordem.idordem)
+            .distinct(models.Ordem.idfechamento)
+            .subquery()
+        )
+        q = (
+            db.query(models.ContasReceber.valor, fluxo_por_fech.c.idfluxo)
+            .join(fluxo_por_fech, models.ContasReceber.idfechamento == fluxo_por_fech.c.idfechamento)
+            .filter(
+                models.ContasReceber.vencimento >= data_de,
+                models.ContasReceber.vencimento <= data_ate,
+            )
+        )
+        if idempresa:
+            q = q.join(
+                models.Fechamento,
+                models.ContasReceber.idfechamento == models.Fechamento.idfechamento,
+            ).filter(models.Fechamento.idempresa == idempresa)
+        for row in q.all():
+            key = (row.idfluxo or "").strip()
+            if not key or key not in dre:
+                continue
+            v = float(row.valor or 0)
+            add_value(key, v)
+            total_receitas += v
+    else:  # fat_recebidos
+        fluxo_por_fech = (
+            db.query(models.Ordem.idfechamento, models.Ordem.idfluxo)
+            .filter(
+                models.Ordem.idfechamento.isnot(None),
+                models.Ordem.idfluxo.isnot(None),
+            )
+            .order_by(models.Ordem.idfechamento, models.Ordem.idordem)
+            .distinct(models.Ordem.idfechamento)
+            .subquery()
+        )
+        q = (
+            db.query(models.ContasReceber.valor_pago, fluxo_por_fech.c.idfluxo)
+            .join(fluxo_por_fech, models.ContasReceber.idfechamento == fluxo_por_fech.c.idfechamento)
+            .filter(
+                models.ContasReceber.ultimo_pagamento >= data_de,
+                models.ContasReceber.ultimo_pagamento <= data_ate,
+                models.ContasReceber.valor_pago.isnot(None),
+            )
+        )
+        if idempresa:
+            q = q.join(
+                models.Fechamento,
+                models.ContasReceber.idfechamento == models.Fechamento.idfechamento,
+            ).filter(models.Fechamento.idempresa == idempresa)
+        for row in q.all():
+            key = (row.idfluxo or "").strip()
+            if not key or key not in dre:
+                continue
+            v = float(row.valor_pago or 0)
+            add_value(key, v)
+            total_receitas += v
+
+    # 4. Build sorted list of non-zero items
+    items = [
+        {
+            "idfluxo":  v["idfluxo"],
+            "descricao": v["descricao"],
+            "nivel":    v["nivel"],
+            "valor":    round(v["valor"], 2),
+            "ordem":    _ordem_key(v["idfluxo"]),
+        }
+        for v in dre.values()
+        if round(v["valor"], 2) != 0.0
+    ]
+    items.sort(key=lambda x: x["ordem"])
+
+    return {
+        "items":          items,
+        "total_receitas": round(total_receitas, 2),
+        "total_despesas": round(total_despesas, 2),
+        "resultado":      round(total_receitas - total_despesas, 2),
+    }

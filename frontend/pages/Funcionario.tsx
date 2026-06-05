@@ -464,17 +464,17 @@ export function FuncionarioPage() {
           </div>
         ) : (() => {
           const cols: GridColumn<Employee>[] = [
-            { header: 'ID', render: emp => <span className="text-sm font-bold text-[#B21212]">{emp.idfuncionario}</span> },
+            { header: 'ID', render: emp => <span className="text-xs font-bold text-[#B21212]">{emp.idfuncionario}</span> },
             {
               header: 'Funcionário',
               render: emp => (
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-slate-700">{emp.nome}</span>
+                  <span className="text-xs font-bold text-slate-700">{emp.nome}</span>
                   <span className="text-xs text-slate-400">{emp.cpf}</span>
                 </div>
               ),
             },
-            { header: 'Cargo', render: emp => <span className="text-sm text-slate-500">{emp.cargo}</span> },
+            { header: 'Cargo', render: emp => <span className="text-xs text-slate-500">{emp.cargo}</span> },
             {
               header: 'Status',
               render: emp => (

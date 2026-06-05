@@ -5,6 +5,7 @@ import { Input } from '../components/ui/Input';
 import { InputCurrency } from '../components/ui/InputCurrency';
 import { Modal } from '../components/ui/Modal';
 import { FornecedorAutocomplete, FornecedorOption } from '../components/ui/FornecedorAutocomplete';
+import { ProdutoAutocomplete, ProdutoOption } from '../components/ui/ProdutoAutocomplete';
 import {
   Plus, Search, ChevronLeft, ChevronRight, X,
   AlertCircle, CheckCircle2, Trash2, Edit, Eye,
@@ -62,12 +63,12 @@ interface ContaPagarItemAPI {
 
 interface Fornecedor  { idfornecedor: number; nome: string | null; nomefantasia: string | null }
 interface Empresa     { idempresa: number; nome: string | null; nomefantasia: string | null }
-interface Produto     { idproduto: number; descricao: string | null; unidade: string | null }
 interface Equipamento { idequipamento: number; nome: string | null; placa: string | null }
 interface FluxoFin    { idfluxo: string; descricao: string | null }
 
 interface ItemForm {
   idproduto: number | '';
+  descricao: string;
   quantidade: number;
   valor_unitario: number;
   idequipamento: number | '';
@@ -114,7 +115,7 @@ const emptyCompraForm: CompraForm = {
 };
 
 const emptyItemForm: ItemForm = {
-  idproduto: '', quantidade: 1, valor_unitario: 0, idequipamento: '', km: 0,
+  idproduto: '', descricao: '', quantidade: 1, valor_unitario: 0, idequipamento: '', km: 0,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -156,7 +157,6 @@ export function ComprasPage() {
 
   // ── Auxiliares para selects ───────────────────────────────────────────────────
   const [empresas, setEmpresas]         = useState<Empresa[]>([]);
-  const [produtos, setProdutos]         = useState<Produto[]>([]);
   const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
   const [fluxos, setFluxos]             = useState<FluxoFin[]>([]);
 
@@ -223,12 +223,10 @@ export function ComprasPage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/empresas').then(r => r.json()),
-      fetch('/api/produtos').then(r => r.json()),
-      fetch('/api/equipamentos').then(r => r.json()),
+      fetch(`/api/equipamentos?${new URLSearchParams({ status: 'DISPONÍVEL' })}`).then(r => r.json()),
       fetch('/api/fluxo-financeiro').then(r => r.json()),
-    ]).then(([emp, prod, equip, flx]) => {
+    ]).then(([emp, equip, flx]) => {
       setEmpresas(Array.isArray(emp) ? emp : []);
-      setProdutos(Array.isArray(prod) ? prod : []);
       setEquipamentos(Array.isArray(equip) ? equip : []);
       setFluxos(Array.isArray(flx) ? flx : []);
     }).catch(console.error);
@@ -756,7 +754,7 @@ export function ComprasPage() {
                       onChange={e => setCompraForm(f => ({ ...f, idfluxo: e.target.value }))}
                     >
                       <option value="">Selecione...</option>
-                      {fluxos.map(fl => (
+                      {fluxos.filter(fl => fl.idfluxo.startsWith('2')).map(fl => (
                         <option key={fl.idfluxo} value={fl.idfluxo}>{fl.idfluxo} — {fl.descricao}</option>
                       ))}
                     </select>
@@ -825,11 +823,10 @@ export function ComprasPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {itens.map((it, idx) => {
-                        const prod  = produtos.find(p => p.idproduto === it.idproduto);
                         const equip = equipamentos.find(e => e.idequipamento === it.idequipamento);
                         return (
                           <tr key={idx} className="text-sm">
-                            <td className="px-4 py-2 text-xs font-bold text-slate-700">{prod?.descricao ?? it.idproduto}</td>
+                            <td className="px-4 py-2 text-xs font-bold text-slate-700">{it.descricao || String(it.idproduto)}</td>
                             <td className="px-4 py-2 text-xs text-slate-500">{it.quantidade}</td>
                             <td className="px-4 py-2 text-xs text-slate-500">{fmtCurrency(it.valor_unitario)}</td>
                             <td className="px-4 py-2 text-xs font-bold text-slate-700">{fmtCurrency(it.quantidade * it.valor_unitario)}</td>
@@ -955,25 +952,24 @@ export function ComprasPage() {
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">
               Produto <span className="text-red-500">*</span>
             </label>
-            <select
-              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[#B21212]/20"
+            <ProdutoAutocomplete
               value={itemForm.idproduto}
-              onChange={e => setItemForm(f => ({ ...f, idproduto: e.target.value ? +e.target.value : '' }))}
-            >
-              <option value="">Selecione...</option>
-              {produtos.map(p => (
-                <option key={p.idproduto} value={p.idproduto}>{p.descricao}</option>
-              ))}
-            </select>
+              displayName={itemForm.descricao}
+              onChange={p => setItemForm(f => ({
+                ...f,
+                idproduto: p?.idproduto ?? '',
+                descricao: p?.descricao ?? '',
+              }))}
+              placeholder="Digite 3+ caracteres para buscar..."
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Quantidade"
-              type="number" step="0.01" min="1" inputMode="decimal"
-              value={itemForm.quantidade ? itemForm.quantidade.toFixed(2) : '1.00'}
-              onChange={e => setItemForm(f => ({ ...f, quantidade: parseFloat(e.target.value) || 1 }))}
-              onBlur={e => setItemForm(f => ({ ...f, quantidade: parseFloat(e.target.value) || 1 }))}
+              type="number" step="0.01" min="0" inputMode="decimal"
+              value={itemForm.quantidade}
+              onChange={e => setItemForm(f => ({ ...f, quantidade: parseFloat(e.target.value) || 0 }))}
             />
             <InputCurrency
               label="Valor Unitário (R$)"

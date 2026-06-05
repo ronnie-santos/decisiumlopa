@@ -27,8 +27,8 @@ export function TipoEquipamentoPage() {
     .sort((a, b) => Number(a.idtipoequipamento) - Number(b.idtipoequipamento));
 
   const cols: GridColumn<TipoEquipamento>[] = [
-    { header: 'Código', render: i => <span className="text-sm font-bold text-[#B21212]">{i.idtipoequipamento}</span> },
-    { header: 'Nome', render: i => <span className="text-sm text-slate-700">{i.nome}</span> },
+    { header: 'Código', render: i => <span className="text-xs font-bold text-[#B21212]">{i.idtipoequipamento}</span> },
+    { header: 'Nome', render: i => <span className="text-xs font-bold text-slate-700">{i.nome}</span> },
     {
       header: 'Ações', headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',
       cellClass: 'px-4 py-2 text-right',

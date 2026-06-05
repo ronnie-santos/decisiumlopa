@@ -218,7 +218,7 @@ class AnaliseFinanceiraReport(BaseReport):
                 str(i + 1),
                 rows[i]["nome"],
                 str(rows[i]["qtd"]),
-                _brl(rows[i]["total_valor"]),
+                rows[i]["total_valor"],          # float bruto para bar_col
                 _brl(rows[i]["total_pago"]),
             ]
             for i in range(len(rows))
@@ -230,52 +230,58 @@ class AnaliseFinanceiraReport(BaseReport):
         w = self._col_w()
         cw = [w * 0.06, w * 0.38, w * 0.08, w * 0.24, w * 0.24]
         headers = ["#", "Fornecedor", "Qtd", "Total Esperado", "Pago"]
+        max_v = max((r["total_valor"] for r in rows), default=1)
+
         rows_data = [
             [
                 str(i + 1),
                 rows[i]["nome"],
                 str(rows[i]["qtd"]),
-                _brl(rows[i]["total_valor"]),
+                rows[i]["total_valor"],          # float bruto para bar_col
                 _brl(rows[i]["total_pago"]),
             ]
             for i in range(len(rows))
         ]
-        return self._ranking_table(headers, rows_data, cw, bar_col=3, bar_color=COLOR_BAR_RED)
+        return self._ranking_table(headers, rows_data, cw, bar_col=3, bar_color=COLOR_BAR_RED, max_val=max_v)
 
     # ── Tabela Top Equip Receitas ─────────────────────────────────────────────
     def _equip_rec_table(self, rows: list[dict]) -> Table:
         w = self._col_w()
         cw = [w * 0.06, w * 0.38, w * 0.14, w * 0.08, w * 0.17, w * 0.17]
         headers = ["#", "Equipamento", "Placa", "OS", "Total", "Recebido"]
+        max_v = max((r["total_valor"] for r in rows), default=1)
+
         rows_data = [
             [
                 str(i + 1),
                 rows[i]["nome"],
                 rows[i]["placa"],
                 str(rows[i]["qtd"]),
-                _brl(rows[i]["total_valor"]),
+                rows[i]["total_valor"],          # float bruto para bar_col
                 _brl(rows[i]["total_pago"]),
             ]
             for i in range(len(rows))
         ]
-        return self._ranking_table(headers, rows_data, cw, bar_col=4, bar_color=COLOR_BAR_GREEN)
+        return self._ranking_table(headers, rows_data, cw, bar_col=4, bar_color=COLOR_BAR_GREEN, max_val=max_v)
 
     # ── Tabela Top Equip Despesas ─────────────────────────────────────────────
     def _equip_desp_table(self, rows: list[dict]) -> Table:
         w = self._col_w()
         cw = [w * 0.06, w * 0.42, w * 0.14, w * 0.10, w * 0.28]
         headers = ["#", "Equipamento", "Placa", "Compras", "Total Despesas"]
+        max_v = max((r["total_valor"] for r in rows), default=1)
+
         rows_data = [
             [
                 str(i + 1),
                 rows[i]["nome"],
                 rows[i]["placa"],
                 str(rows[i]["qtd"]),
-                _brl(rows[i]["total_valor"]),
+                rows[i]["total_valor"],          # float bruto para bar_col
             ]
             for i in range(len(rows))
         ]
-        return self._ranking_table(headers, rows_data, cw, bar_col=4, bar_color=COLOR_BAR_RED)
+        return self._ranking_table(headers, rows_data, cw, bar_col=4, bar_color=COLOR_BAR_RED, max_val=max_v)
 
     # ── Barra de totais final ─────────────────────────────────────────────────
     def _total_bar(self, resumo: dict) -> Table:

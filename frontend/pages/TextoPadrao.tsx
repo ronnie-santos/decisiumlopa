@@ -27,10 +27,10 @@ export function TextoPadraoPage() {
     .sort((a, b) => Number(a.id) - Number(b.id));
 
   const cols: GridColumn<TextoPadrao>[] = [
-    { header: 'Código', render: i => <span className="text-sm font-bold text-[#B21212]">{i.idtexto}</span> },
+    { header: 'Código', render: i => <span className="text-xs font-bold text-[#B21212]">{i.idtexto}</span> },
     {
       header: 'Texto', cellClass: 'px-4 py-2 max-w-xl',
-      render: i => <span className="text-sm text-slate-700 line-clamp-2">{i.texto}</span>,
+      render: i => <span className="text-xs text-slate-500 line-clamp-2">{i.texto}</span>,
     },
     {
       header: 'Ações', headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',

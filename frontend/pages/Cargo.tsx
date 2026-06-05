@@ -27,8 +27,8 @@ export function CargoPage() {
     .sort((a, b) => Number(a.id) - Number(b.id));
 
   const cargoCols: GridColumn<Cargo>[] = [
-    { header: 'Código', render: c => <span className="text-sm font-bold text-[#B21212]">{c.id}</span> },
-    { header: 'Nome do Cargo', render: c => <span className="text-sm font-bold text-slate-700">{c.nome}</span> },
+    { header: 'Código', render: c => <span className="text-xs font-bold text-[#B21212]">{c.id}</span> },
+    { header: 'Nome do Cargo', render: c => <span className="text-xs font-bold text-slate-700">{c.nome}</span> },
     {
       header: 'Ações', headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',
       cellClass: 'px-4 py-2 text-right',

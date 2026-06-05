@@ -6,31 +6,52 @@ import { Modal } from '../components/ui/Modal';
 import { Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import { FormaPagamento } from '../types';
 import { DataGrid, GridColumn } from '../components/ui/DataGrid';
+import { cn } from '../utils/cn';
+
+type FormData = { nome: string; situacao: string };
+
+const STATUS_OPTIONS = ['ATIVO', 'INATIVO'] as const;
+
+function StatusBadge({ situacao }: { situacao?: string }) {
+  const ativo = (situacao ?? 'ATIVO') === 'ATIVO';
+  return (
+    <span className={cn(
+      'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide',
+      ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+    )}>
+      {ativo ? 'Ativo' : 'Inativo'}
+    </span>
+  );
+}
 
 export function FormaPagamentoPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<FormaPagamento | null>(null);
   const [items, setItems] = useState<FormaPagamento[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'TODOS' | 'ATIVO' | 'INATIVO'>('TODOS');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<FormaPagamento | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [invalidFields, setInvalidFields] = useState<string[]>([]);
-  const [formData, setFormData] = useState<{ nome: string }>({ nome: '' });
+  const [formData, setFormData] = useState<FormData>({ nome: '', situacao: 'ATIVO' });
 
   const filteredItems = items
     .filter(item => {
-      const searchLower = searchTerm.toLowerCase();
-      return !searchLower || String(item.nome || '').toLowerCase().includes(searchLower);
+      const matchSearch = !searchTerm || String(item.nome || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchStatus = filterStatus === 'TODOS' || (item.situacao ?? 'ATIVO') === filterStatus;
+      return matchSearch && matchStatus;
     })
     .sort((a, b) => Number(a.idformapgto) - Number(b.idformapgto));
 
   const cols: GridColumn<FormaPagamento>[] = [
-    { header: 'Código', render: i => <span className="text-sm font-bold text-[#B21212]">{i.idformapgto}</span> },
-    { header: 'Nome', render: i => <span className="text-sm text-slate-700">{i.nome}</span> },
+    { header: 'Código', render: i => <span className="text-xs font-bold text-[#B21212]">{i.idformapgto}</span> },
+    { header: 'Nome', render: i => <span className="text-xs font-bold text-slate-700">{i.nome}</span> },
+    { header: 'Situação', render: i => <StatusBadge situacao={i.situacao} /> },
     {
-      header: 'Ações', headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',
+      header: 'Ações',
+      headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',
       cellClass: 'px-4 py-2 text-right',
       render: i => (
         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -49,15 +70,19 @@ export function FormaPagamentoPage() {
       if (response.ok) {
         const data = await response.json();
         setItems(data.map((d: any) => ({ ...d, id: String(d.idformapgto) })));
-      } else { console.error('Falha ao carregar formas de pagamento'); }
+      }
     } catch (error) { console.error('Erro na requisição:', error); }
   };
 
-  const handleOpenNewModal = () => { setEditingItem(null); setFormData({ nome: '' }); setIsModalOpen(true); };
+  const handleOpenNewModal = () => {
+    setEditingItem(null);
+    setFormData({ nome: '', situacao: 'ATIVO' });
+    setIsModalOpen(true);
+  };
 
   const handleOpenEditModal = (item: FormaPagamento) => {
     setEditingItem(item);
-    setFormData({ nome: item.nome || '' });
+    setFormData({ nome: item.nome || '', situacao: item.situacao ?? 'ATIVO' });
     setIsModalOpen(true);
   };
 
@@ -70,8 +95,9 @@ export function FormaPagamentoPage() {
       const url = isEditing ? `/api/formapagamento/${editingItem!.idformapgto}` : '/api/formapagamento';
       const method = isEditing ? 'PUT' : 'POST';
       const response = await fetch(url, {
-        method, headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome: formData.nome.trim() })
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: formData.nome.trim(), situacao: formData.situacao }),
       });
       if (response.ok) { fetchItems(); setIsModalOpen(false); }
       else { const e = await response.json().catch(() => ({})); console.error('Erro:', e.detail || response.status); }
@@ -95,38 +121,136 @@ export function FormaPagamentoPage() {
       <div className="p-5 space-y-4">
         <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
           <div className="flex flex-wrap items-end justify-between gap-4">
+            {/* Busca */}
             <div className="flex-1 min-w-[200px]">
-              <input className="w-full border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-200" placeholder="Buscar forma de pagamento..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <input
+                className="w-full border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-200"
+                placeholder="Buscar forma de pagamento..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
             </div>
-            <Button onClick={handleOpenNewModal} className="gap-2 h-9 px-5 font-bold uppercase tracking-wider"><Plus className="h-5 w-5" />Novo</Button>
+
+            {/* Filtro status */}
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-1">
+              {(['TODOS', 'ATIVO', 'INATIVO'] as const).map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setFilterStatus(opt)}
+                  className={cn(
+                    'px-3 py-1 rounded-md text-xs font-semibold transition-colors',
+                    filterStatus === opt
+                      ? 'bg-white shadow text-slate-800'
+                      : 'text-slate-500 hover:text-slate-700'
+                  )}
+                >
+                  {opt === 'TODOS' ? 'Todos' : opt === 'ATIVO' ? 'Ativos' : 'Inativos'}
+                </button>
+              ))}
+            </div>
+
+            <Button onClick={handleOpenNewModal} className="gap-2 h-9 px-5 font-bold uppercase tracking-wider">
+              <Plus className="h-5 w-5" />Novo
+            </Button>
           </div>
         </div>
-        <DataGrid data={filteredItems} columns={cols} getKey={i => i.id} emptyMessage="Nenhuma forma de pagamento encontrada." />
+
+        <DataGrid
+          data={filteredItems}
+          columns={cols}
+          getKey={i => i.id}
+          emptyMessage="Nenhuma forma de pagamento encontrada."
+        />
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? `Editar: ${editingItem.nome}` : "Nova Forma de Pagamento"} className="max-w-md"
-        footer={<><Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button><Button onClick={handleSave}>{editingItem ? 'Salvar Alterações' : 'Salvar'}</Button></>}>
+      {/* Modal criar/editar */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingItem ? `Editar: ${editingItem.nome}` : 'Nova Forma de Pagamento'}
+        className="max-w-md"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSave}>{editingItem ? 'Salvar Alterações' : 'Salvar'}</Button>
+          </>
+        }
+      >
         <div className="space-y-4">
-          <Input label={<span>Nome <span className="text-red-500">*</span></span>} placeholder="Ex: Boleto Bancário" value={formData.nome} onChange={(e) => setFormData({ nome: e.target.value })} />
+          <Input
+            label={<span>Nome <span className="text-red-500">*</span></span>}
+            placeholder="Ex: Boleto Bancário"
+            value={formData.nome}
+            onChange={e => setFormData(f => ({ ...f, nome: e.target.value }))}
+          />
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Situação</span>
+            <div className="flex gap-4">
+              {STATUS_OPTIONS.map(opt => (
+                <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value={opt}
+                    checked={formData.situacao === opt}
+                    onChange={() => setFormData(f => ({ ...f, situacao: opt }))}
+                    className="accent-[#B21212]"
+                  />
+                  <span className="text-xs text-slate-700">{opt === 'ATIVO' ? 'Ativo' : 'Inativo'}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
       </Modal>
 
-      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Confirmar Exclusão" className="max-w-md"
-        footer={<><Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancelar</Button><Button onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">Confirmar Exclusão</Button></>}>
+      {/* Modal exclusão */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Confirmar Exclusão"
+        className="max-w-md"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">Confirmar Exclusão</Button>
+          </>
+        }
+      >
         <div className="flex flex-col items-center text-center space-y-4 py-4">
-          <div className="h-16 w-16 bg-red-50 rounded-full flex items-center justify-center"><AlertTriangle className="h-8 w-8 text-red-600" /></div>
-          <div><h4 className="text-lg font-bold text-slate-800">Você tem certeza?</h4>
-            <p className="text-sm text-slate-500 mt-1">Deseja realmente excluir <span className="font-bold text-slate-700">{itemToDelete?.nome}</span>? Esta ação não pode ser desfeita.</p></div>
-          {deleteError && <div className="w-full p-4 bg-red-50 border border-red-100 rounded-lg"><p className="text-xs text-red-600 font-medium">{deleteError}</p></div>}
+          <div className="h-16 w-16 bg-red-50 rounded-full flex items-center justify-center">
+            <AlertTriangle className="h-8 w-8 text-red-600" />
+          </div>
+          <div>
+            <h4 className="text-lg font-bold text-slate-800">Você tem certeza?</h4>
+            <p className="text-sm text-slate-500 mt-1">
+              Deseja realmente excluir <span className="font-bold text-slate-700">{itemToDelete?.nome}</span>? Esta ação não pode ser desfeita.
+            </p>
+          </div>
+          {deleteError && (
+            <div className="w-full p-4 bg-red-50 border border-red-100 rounded-lg">
+              <p className="text-xs text-red-600 font-medium">{deleteError}</p>
+            </div>
+          )}
         </div>
       </Modal>
 
-      <Modal isOpen={isValidationModalOpen} onClose={() => setIsValidationModalOpen(false)} title="Campos Obrigatórios" className="max-w-md"
-        footer={<Button onClick={() => setIsValidationModalOpen(false)} className="px-8">Entendido</Button>}>
+      {/* Modal validação */}
+      <Modal
+        isOpen={isValidationModalOpen}
+        onClose={() => setIsValidationModalOpen(false)}
+        title="Campos Obrigatórios"
+        className="max-w-md"
+        footer={<Button onClick={() => setIsValidationModalOpen(false)} className="px-8">Entendido</Button>}
+      >
         <div className="flex flex-col items-center text-center space-y-4 py-4">
-          <div className="h-16 w-16 bg-amber-50 rounded-full flex items-center justify-center"><AlertTriangle className="h-8 w-8 text-amber-500" /></div>
-          <div><h4 className="text-lg font-bold text-slate-800">Informações Faltando</h4>
-            <p className="text-sm text-slate-500 mt-1">Para prosseguir com o cadastro, os seguintes campos devem ser preenchidos:</p></div>
+          <div className="h-16 w-16 bg-amber-50 rounded-full flex items-center justify-center">
+            <AlertTriangle className="h-8 w-8 text-amber-500" />
+          </div>
+          <div>
+            <h4 className="text-lg font-bold text-slate-800">Informações Faltando</h4>
+            <p className="text-sm text-slate-500 mt-1">Para prosseguir com o cadastro, os seguintes campos devem ser preenchidos:</p>
+          </div>
           <div className="w-full space-y-2">
             {invalidFields.map((field, index) => (
               <div key={index} className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-100 rounded-lg text-sm text-slate-700 font-medium">

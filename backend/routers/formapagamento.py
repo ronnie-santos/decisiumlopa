@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from typing import List
+from typing import List, Optional
 
 import models, schemas
 from database import get_db
@@ -9,8 +9,14 @@ from database import get_db
 router = APIRouter(prefix="/formapagamento", tags=["forma_pagamento"])
 
 @router.get("", response_model=List[schemas.FormaPagamento])
-def get_forma_pagamento(db: Session = Depends(get_db)):
-    return db.query(models.FormaPagamento).order_by(models.FormaPagamento.nome.asc()).all()
+def get_forma_pagamento(
+    situacao: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    q = db.query(models.FormaPagamento)
+    if situacao:
+        q = q.filter(models.FormaPagamento.situacao == situacao.upper())
+    return q.order_by(models.FormaPagamento.nome.asc()).all()
 
 @router.post("", response_model=schemas.FormaPagamento)
 def create_formapagamento(formapagamento: schemas.FormaPagamentoCreate, db: Session = Depends(get_db)):

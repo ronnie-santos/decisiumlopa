@@ -27,8 +27,8 @@ export function FornecedorRamoPage() {
     .sort((a, b) => Number(a.idramo) - Number(b.idramo));
 
   const cols: GridColumn<FornecedorRamo>[] = [
-    { header: 'Código', render: i => <span className="text-sm font-bold text-[#B21212]">{i.idramo}</span> },
-    { header: 'Descrição', render: i => <span className="text-sm text-slate-700">{i.descricao}</span> },
+    { header: 'Código', render: i => <span className="text-xs font-bold text-[#B21212]">{i.idramo}</span> },
+    { header: 'Descrição', render: i => <span className="text-xs font-bold text-slate-700">{i.descricao}</span> },
     {
       header: 'Ações', headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',
       cellClass: 'px-4 py-2 text-right',

@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload, noload, selectinload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import not_, or_
 from typing import List, Optional
+from io import BytesIO
 import xml.etree.ElementTree as ET
 from datetime import datetime, date as date_type
 
@@ -99,18 +101,31 @@ def _parse_xml_content(content: bytes) -> dict:
     vals_dps = _find(inf_dps, 'valores')
     v_serv = 0.0
     cst = '0'
+    tp_ret_issqn = ''
+    p_tot_trib_sn = 0.0
+    ret_cp = 0.0
     if vals_dps is not None:
         vsp = _find(vals_dps, 'vServPrest')
         if vsp is not None:
             v_serv = float(_text(vsp, 'vServ', default='0') or '0')
         trib = _find(vals_dps, 'trib')
         if trib is not None:
-            pf = _find(trib, 'tribFed', 'piscofins')
-            if pf is not None:
-                cst = _text(pf, 'CST') or '0'
+            trib_fed = _find(trib, 'tribFed')
+            if trib_fed is not None:
+                pf = _find(trib_fed, 'piscofins')
+                if pf is not None:
+                    cst = _text(pf, 'CST') or '0'
+                ret_cp = float(_text(trib_fed, 'vRetCP', default='0') or '0')
+            trib_mun = _find(trib, 'tribMun')
+            if trib_mun is not None:
+                tp_ret_issqn = _text(trib_mun, 'tpRetISSQN') or ''
+            tot_trib = _find(trib, 'totTrib')
+            if tot_trib is not None:
+                p_tot_trib_sn = float(_text(tot_trib, 'pTotTribSN', default='0') or '0')
 
     local_servico = 'D' if (c_loc_prestacao and c_loc_prestacao == emit_cmun) else 'F'
-    iss = round(v_serv - v_liq, 2)
+    inss = round(ret_cp, 2)
+    iss= round(v_serv * (p_tot_trib_sn / 100), 2) if tp_ret_issqn == '2' else 0.0
 
     try:
         pis_val = float(cst)
@@ -127,13 +142,14 @@ def _parse_xml_content(content: bytes) -> dict:
         'valor_nota': v_serv,
         'valor_liquido': v_liq,
         'iss': iss,
+        'inss': inss,
         'base_calculo': v_serv,
         'valor_servicos': v_serv,
         'total_retencao': v_serv,
         'pis': pis_val,
         'local_servico': local_servico,
         'dentro_pais': 'S',
-        'resp_imposto': 'N',
+        'resp_imposto': 'S' if tp_ret_issqn == '2' else 'N',
         'vencimento': vencimento,
         'link': link,
         'dh_proc': dh_proc,
@@ -331,6 +347,194 @@ async def importar_xml(
         raise HTTPException(status_code=400, detail=str(e.orig))
 
     return _load(db, db_nota.idnota)
+
+
+# ── Relatório: Notas Fiscais Emitidas ─────────────────────────────────────────
+@router.get("/relatorio/notas-emitidas", response_model=None)
+def relatorio_notas_emitidas(
+    data_ini: str = Query(...),
+    data_fim: str = Query(...),
+    idempresa: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        d_ini = date_type.fromisoformat(data_ini)
+        d_fim = date_type.fromisoformat(data_fim)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Formato de data inválido. Use YYYY-MM-DD.")
+
+    q = (
+        db.query(models.NotaFiscal)
+        .filter(
+            models.NotaFiscal.data_emissao >= d_ini,
+            models.NotaFiscal.data_emissao <= d_fim,
+        )
+        .options(
+            noload(models.NotaFiscal.servicos),
+        )
+        .order_by(
+            models.NotaFiscal.idempresa,
+            models.NotaFiscal.data_emissao,
+            models.NotaFiscal.numero,
+        )
+    )
+
+    if idempresa:
+        q = q.filter(models.NotaFiscal.idempresa == idempresa)
+
+    notas = q.all()
+
+    grupos: dict = {}
+    for n in notas:
+        emp = n.empresa_rel
+        chave = n.idempresa or 0
+        if chave not in grupos:
+            grupos[chave] = {
+                "idempresa": chave,
+                "empresa_nome": (emp.nome if emp else ""),
+                "empresa_fantasia": (emp.nomefantasia if emp else ""),
+                "rows": [],
+                "subtotal_valor": 0.0,
+                "subtotal_iss": 0.0,
+                "subtotal_inss": 0.0,
+                "count": 0,
+            }
+
+        cli = n.cliente_rel
+        cliente_nome = ""
+        if cli:
+            cliente_nome = cli.nomefantasia or cli.nome or ""
+
+        valor_nota = float(n.valor_nota or 0)
+        inss       = float(n.inss or 0)
+        iss_val    = float(n.iss or 0)
+
+        grupos[chave]["rows"].append({
+            "idnota":        n.idnota,
+            "numero":        n.numero,
+            "data_emissao":  n.data_emissao.isoformat() if n.data_emissao else None,
+            "cliente_nome":  cliente_nome,
+            "valor_nota":    valor_nota,
+            "iss":           iss_val,
+            "inss":          inss,
+            "resp_imposto":  n.resp_imposto or "",
+        })
+
+        grupos[chave]["subtotal_valor"] += valor_nota
+        grupos[chave]["subtotal_iss"]   += iss_val
+        grupos[chave]["subtotal_inss"]  += inss
+        grupos[chave]["count"]          += 1
+
+    lista_grupos = sorted(grupos.values(), key=lambda g: g["empresa_nome"])
+
+    total_valor = sum(g["subtotal_valor"] for g in lista_grupos)
+    total_iss   = sum(g["subtotal_iss"]   for g in lista_grupos)
+    total_inss  = sum(g["subtotal_inss"]  for g in lista_grupos)
+    total_notas = sum(g["count"]          for g in lista_grupos)
+
+    return {
+        "grupos":      lista_grupos,
+        "total_valor": total_valor,
+        "total_iss":   total_iss,
+        "total_inss":  total_inss,
+        "total_notas": total_notas,
+    }
+
+
+# ── Relatório PDF: Notas Fiscais Emitidas ─────────────────────────────────────
+@router.get("/relatorio/notas-emitidas/pdf")
+def relatorio_notas_emitidas_pdf(
+    data_ini: str = Query(...),
+    data_fim: str = Query(...),
+    idempresa: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    from reports.notas_fiscais_report import NotasFiscaisReport
+
+    try:
+        d_ini = date_type.fromisoformat(data_ini)
+        d_fim = date_type.fromisoformat(data_fim)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Formato de data inválido. Use YYYY-MM-DD.")
+
+    q = (
+        db.query(models.NotaFiscal)
+        .filter(
+            models.NotaFiscal.data_emissao >= d_ini,
+            models.NotaFiscal.data_emissao <= d_fim,
+        )
+        .options(noload(models.NotaFiscal.servicos))
+        .order_by(
+            models.NotaFiscal.idempresa,
+            models.NotaFiscal.data_emissao,
+            models.NotaFiscal.numero,
+        )
+    )
+    if idempresa:
+        q = q.filter(models.NotaFiscal.idempresa == idempresa)
+
+    notas = q.all()
+
+    grupos: dict = {}
+    for n in notas:
+        emp   = n.empresa_rel
+        chave = n.idempresa or 0
+        if chave not in grupos:
+            grupos[chave] = {
+                "idempresa":       chave,
+                "empresa_nome":    (emp.nome if emp else ""),
+                "empresa_fantasia":(emp.nomefantasia if emp else ""),
+                "rows":            [],
+                "subtotal_valor":  0.0,
+                "subtotal_iss":    0.0,
+                "subtotal_inss":   0.0,
+                "count":           0,
+            }
+        cli          = n.cliente_rel
+        cliente_nome = (cli.nomefantasia or cli.nome or "") if cli else ""
+        valor_nota   = float(n.valor_nota or 0)
+        iss_val      = float(n.iss or 0)
+        inss_val     = float(n.inss or 0)
+
+        grupos[chave]["rows"].append({
+            "idnota":       n.idnota,
+            "numero":       n.numero,
+            "data_emissao": n.data_emissao.isoformat() if n.data_emissao else None,
+            "cliente_nome": cliente_nome,
+            "valor_nota":   valor_nota,
+            "iss":          iss_val,
+            "inss":         inss_val,
+        })
+        grupos[chave]["subtotal_valor"] += valor_nota
+        grupos[chave]["subtotal_iss"]   += iss_val
+        grupos[chave]["subtotal_inss"]  += inss_val
+        grupos[chave]["count"]          += 1
+
+    lista_grupos = sorted(grupos.values(), key=lambda g: g["empresa_nome"])
+    total_valor  = sum(g["subtotal_valor"] for g in lista_grupos)
+    total_iss    = sum(g["subtotal_iss"]   for g in lista_grupos)
+    total_inss   = sum(g["subtotal_inss"]  for g in lista_grupos)
+    total_notas  = sum(g["count"]          for g in lista_grupos)
+
+    buf = BytesIO()
+    NotasFiscaisReport().generate(
+        grupos=lista_grupos,
+        total_valor=total_valor,
+        total_iss=total_iss,
+        total_inss=total_inss,
+        total_notas=total_notas,
+        data_ini=data_ini,
+        data_fim=data_fim,
+        buf=buf,
+    )
+    buf.seek(0)
+
+    filename = f"notas_fiscais_{data_ini}_{data_fim}.pdf"
+    return StreamingResponse(
+        buf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
 
 
 # ── Listar com paginação e filtros ────────────────────────────────────────────

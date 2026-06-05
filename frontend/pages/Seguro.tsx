@@ -118,10 +118,10 @@ export function SeguroPage() {
         
         {(() => {
           const cols: GridColumn<Seguro>[] = [
-            { header: 'Código', render: item => <span className="text-sm font-bold text-[#B21212]">{item.idseguro}</span> },
-            { header: 'Titular', render: item => <span className="text-sm text-slate-700">{item.titular}</span> },
-            { header: 'Seguradora', render: item => <span className="text-sm text-slate-700">{item.seguradora}</span> },
-            { header: 'Apólice', render: item => <span className="text-sm text-slate-500">{item.apolice}</span> },
+            { header: 'Código', render: item => <span className="text-xs font-bold text-[#B21212]">{item.idseguro}</span> },
+            { header: 'Titular', render: item => <span className="text-xs font-bold text-slate-700">{item.titular}</span> },
+            { header: 'Seguradora', render: item => <span className="text-xs text-slate-500">{item.seguradora}</span> },
+            { header: 'Apólice', render: item => <span className="text-xs text-slate-500">{item.apolice}</span> },
             {
               header: 'Ações',
               headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right',

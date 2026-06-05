@@ -305,27 +305,27 @@ export function EquipamentoPage() {
         {/* Table Card */}
         {(() => {
           const cols: GridColumn<Equipment>[] = [
-            { header: 'Código', render: eq => <span className="text-sm font-bold text-[#B21212]">{eq.id}</span> },
+            { header: 'Código', render: eq => <span className="text-xs font-bold text-[#B21212]">{eq.id}</span> },
             {
               header: 'Equipamento',
               render: eq => (
                 <div className="flex flex-col">
-                  <span className="text-xs font-black text-slate-300 uppercase tracking-widest mb-0.5">
-                    {empresas.find(e => e.idempresa === eq.idempresa)?.nomefantasia || empresas.find(e => e.idempresa === eq.idempresa)?.nome || 'Empresa não vinculada'}
+                  <span className="text-xs font-bold text-slate-700">{eq.nome}</span>
+                  <span className="text-xs text-slate-400">
+                    {empresas.find(e => e.idempresa === eq.idempresa)?.nomefantasia || empresas.find(e => e.idempresa === eq.idempresa)?.nome || ''}
                   </span>
-                  <span className="text-sm font-bold text-slate-700">{eq.nome}</span>
                 </div>
               ),
             },
-            { header: 'Placa', render: eq => <span className="text-sm text-slate-500 font-mono">{eq.placa}</span> },
-            { header: 'Marca/Modelo', render: eq => <span className="text-sm text-slate-500">{eq.marca} / {eq.modelo}</span> },
+            { header: 'Placa', render: eq => <span className="text-xs text-slate-500 font-mono">{eq.placa}</span> },
+            { header: 'Marca/Modelo', render: eq => <span className="text-xs text-slate-500">{eq.marca} / {eq.modelo}</span> },
             {
               header: 'Status',
               headerClass: 'px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center',
               cellClass: 'px-4 py-2 text-center',
               render: eq => (
                 <span className={cn(
-                  "inline-flex px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border",
+                  "inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase",
                   statusColors[eq.status]
                 )}>
                   {eq.status}

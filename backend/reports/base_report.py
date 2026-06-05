@@ -46,7 +46,7 @@ FONT_BOLD       = "Helvetica-Bold"
 
 # Caminho padrão da logo (ajuste conforme seu ambiente de produção)
 _DEFAULT_LOGO_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "public", "image", "logo_empresa.png"
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "public", "image", "logo_relatorios.jpeg"
 )
 
 

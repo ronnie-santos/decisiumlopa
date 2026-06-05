@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import List, Optional, Dict
 from datetime import date, datetime
 # =============================================
@@ -423,7 +423,15 @@ class FluxoFinanceiroBase(BaseModel):
     movimento: Optional[str] = None
     codigo_importacao: Optional[int] = None
     nivel: Optional[int] = None
+    status: Optional[str] = "ATIVO"
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator('status', mode='before')
+    @classmethod
+    def _normalize_status(cls, v):
+        if not v:
+            return 'ATIVO'
+        return str(v).strip().upper()
 
 class FluxoFinanceiroCreate(FluxoFinanceiroBase):
     idfluxo: str  # obrigatorio: chave alfanumerica definida pelo usuario
@@ -455,6 +463,7 @@ class FormaPagamentoBase(BaseModel):
     nome: Optional[str] = None
     cor_fundo: Optional[int] = None
     cor_fonte: Optional[int] = None
+    situacao: Optional[str] = 'ATIVO'
     model_config = ConfigDict(from_attributes=True)
 class FormaPagamentoCreate(FormaPagamentoBase): pass
 class FormaPagamento(FormaPagamentoBase):
@@ -633,7 +642,17 @@ class FecharOSPayload(BaseModel):
 class RegistrarPagamentoPayload(BaseModel):
     valor_pago: float
     data_pagamento: date
+    idformapgto: Optional[int] = None
     model_config = ConfigDict(from_attributes=True)
+
+class PagamentosCRBase(BaseModel):
+    idcontasreceber: int
+    idformapgto: int
+    valor: float
+    data: date
+    model_config = ConfigDict(from_attributes=True)
+class PagamentosCRCreate(PagamentosCRBase): pass
+class PagamentosCR(PagamentosCRBase): pass
 
 # =============================================
 # PRODUTO / SERVIÇO (produtos_servicos)
@@ -682,7 +701,19 @@ class RegistrarPagamentoPagarPayload(BaseModel):
     valor_pago: float
     data_pagamento: date
     observacao: Optional[str] = None
+    idformapgto: Optional[int] = None
     model_config = ConfigDict(from_attributes=True)
+
+class PagamentosCPBase(BaseModel):
+    idcontaspagar: int
+    idformapgto: int
+    valor: float
+    data: date
+    numero_cheque: Optional[str] = None
+    banco: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+class PagamentosCPCreate(PagamentosCPBase): pass
+class PagamentosCP(PagamentosCPBase): pass
 
 class ContasPagarListItem(ContasPagar):
     fornecedor_nome: Optional[str] = None
